@@ -27,7 +27,7 @@ const args = {};
 for (let i = 2; i < process.argv.length; i += 2) args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
 const input = {
   text: args.text || '厚德载物', src: args.src || '', to: args.to || '', from: args.from || '',
-  date: args.date ?? ganzhiSeason(), lead: args.lead || '', format: args.format || 'tiaofu',
+  date: args.date ?? ganzhiSeason(), lead: args.lead || '', format: args.format || 'auto',
   wild: args.wild ? +args.wild : .5, seed: args.seed ? +args.seed : (Math.random() * 1e9) | 0,
 };
 const plan = layout(input);

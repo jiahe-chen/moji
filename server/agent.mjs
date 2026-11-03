@@ -1,4 +1,5 @@
-// AI 选句助手：DeepSeek V4.1（deepseek-flash）+ DeepSeek 官方搜索。
+// AI 助手：听懂用户的一句话，直接改书法的各个字段，需要新内容时选句并上网核对。
+// 模型 DeepSeek V4.1（deepseek-flash），搜索用 DeepSeek 官方 Search 接口。
 // 协议与 DeepSeek Harness（dsh）一致：对话走 Messages 接口，搜索走 /v1/tools/search。
 // 只开放一个工具 web_search，不能读写文件、不能执行命令，适合放在公网代理后面。
 
@@ -8,16 +9,28 @@ const SEARCH_URL = `${BASE}/v1/tools/search`;
 const MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
 const MAX_ROUNDS = 6;
 
-const SYSTEM = `你是“墨迹 moji”书法生成器的选句助手。用户会描述想把字送给谁、什么场合、什么风格，你推荐适合写成书法的古典诗词或名句。
+const SYSTEM = `你是“墨迹 moji”书法生成器里的 AI 助手。网页上有一幅正在编辑的书法，它的全部字段如下：
+- text：正文
+- src：落款出处，写成“作者+篇名+句”，如“李白行路难句”“苏轼定风波句”；整首诗不加“句”，如“李白静夜思”
+- to：赠给谁（受赠人的名字）
+- from：署名（作者自己的名字，也会刻在名章上）
+- date：落款日期，如“丙午秋”
+- lead：引首章，1 到 2 个字
+- format：版式。auto 自动、tiaofu 竖条幅、doufang 斗方、hengpi 横披
+- wild：放纵度 0 到 1。0.2 端庄，0.5 适中，0.8 以上狂放欹侧
 
-要求：
-1. 推荐 3 条，内容各不相同，按合适程度排序。每条 4 到 28 个汉字为宜，最长不超过 40 字；可以是整首短诗，也可以是名句节选。
-2. 每条都必须先用 web_search 核对原文、作者和篇名，以权威来源（古诗文网、维基文库、百度百科等）为准，不要凭记忆。核对不了的不要推荐。
-3. 落款出处写成“作者+篇名+句”的简写，如“李白行路难句”“苏轼定风波句”；整首诗写“李白静夜思”。
-4. 引首章给两个字，从同一首作品里挑，最好有点巧思或彩蛋。
-5. 理解网络用语：用户说“抽象”通常是“搞笑、有梗”，不是哲学上的抽象。
-6. 最后只输出一个 JSON 对象，不要任何其他文字，格式：
-{"suggestions":[{"text":"正文（保留原文标点）","author":"作者","work":"篇名","src":"落款出处","lead":"两字","reason":"为什么适合，一两句","sources":["核对用的网址"]}]}`;
+用户每次说一句话，你根据这句话和当前字段，决定要改哪些字段。
+
+规则：
+1. 从用户的话里识别人名和角色：“送给 X”“给 X”“赠 X” → to = X；“我是 Y”“署名 Y”“落款 Y” → from = Y。只填用户明确说出的，不要编造人名。
+2. 用户要新内容、要换一句，或者当前正文明显不合适时，推荐 3 条古典诗词或名句，放进 suggestions。每条都必须先用 web_search 核对原文、作者、篇名，以古诗文网、维基文库、百度百科等权威来源为准，不要凭记忆。核对不了的不要推荐。每条 4 到 28 个汉字为宜，最长 40 字。
+3. 如果用户只是改字段，比如“署名改成王五”“换成横的”“再狂一点”“不要引首章”，就不要搜索，也不要给 suggestions，只在 set 里放要改的字段。
+4. 版式：用户说了挂在哪里，或者要横的、竖的、方的，就设 format。没说的话，每条 suggestion 也可以给一个合适的 format；拿不准就给 auto。参考：四个字左右适合斗方或横披；两句五言、七言适合竖条幅；整首绝句适合斗方或横披。
+5. 风格：庄重、送长辈、送领导 → wild 0.2 到 0.35；一般 0.5；搞笑、有梗、狂放 → 0.75 到 0.9。网络用语里“抽象”通常是搞笑、有梗，不是哲学上的抽象。
+6. 引首章从同一首作品里挑两个字，最好有点巧思或彩蛋。
+7. 只输出一个 JSON 对象，不要任何其他文字：
+{"reply":"一句话告诉用户你做了什么","set":{"只放要改的字段":"新值"},"suggestions":[{"text":"正文，保留原文标点","author":"作者","work":"篇名","src":"落款出处","lead":"两字","format":"auto","wild":0.5,"reason":"为什么适合，一两句","sources":["核对用的网址"]}]}
+suggestions 按合适程度排序，第一条会被直接写出来，所以它的 text、src、lead 不要再放进 set。没有新内容时 suggestions 为 []。`;
 
 const TOOLS = [{
   name: 'web_search',
@@ -44,21 +57,34 @@ async function search(apiKey, queries, question) {
   return results;
 }
 
+// 只收认识的字段，限制长度，防止模型或用户塞进奇怪的值
+const TEXT_FIELDS = { text: 200, src: 40, to: 20, from: 20, date: 12, lead: 2 };
+const FORMATS = ['auto', 'tiaofu', 'doufang', 'hengpi'];
+export function cleanFields(obj) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  for (const [k, max] of Object.entries(TEXT_FIELDS)) if (typeof obj[k] === 'string') out[k] = [...obj[k].trim()].slice(0, max).join('');
+  if (FORMATS.includes(obj.format)) out.format = obj.format;
+  const w = Number(obj.wild);
+  if (obj.wild !== undefined && obj.wild !== null && obj.wild !== '' && Number.isFinite(w)) out.wild = Math.min(1, Math.max(0, w));
+  return out;
+}
+
 function parseJson(text) {
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('模型没有返回 JSON');
   const data = JSON.parse(m[0]);
-  if (!Array.isArray(data.suggestions)) throw new Error('返回格式不对');
-  return data.suggestions.slice(0, 5).map(s => ({
-    text: String(s.text || ''), author: String(s.author || ''), work: String(s.work || ''),
-    src: String(s.src || ''), lead: String(s.lead || '').slice(0, 2), reason: String(s.reason || ''),
-    sources: (Array.isArray(s.sources) ? s.sources : []).filter(u => /^https?:\/\//.test(u)).slice(0, 3),
+  const suggestions = (Array.isArray(data.suggestions) ? data.suggestions : []).slice(0, 5).map(s => ({
+    ...cleanFields({ text: s.text, src: s.src, lead: s.lead, format: s.format, wild: s.wild }),
+    author: String(s.author || '').slice(0, 20), work: String(s.work || '').slice(0, 40), reason: String(s.reason || '').slice(0, 200),
+    sources: (Array.isArray(s.sources) ? s.sources : []).filter(u => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 3),
   })).filter(s => s.text);
+  return { reply: String(data.reply || '').slice(0, 200), set: cleanFields(data.set), suggestions };
 }
 
-/** 跑一轮选句。返回 { suggestions, searches, usage }。 */
-export async function suggest({ apiKey, request }) {
-  const messages = [{ role: 'user', content: request }];
+/** 根据用户的一句话和当前字段，决定改哪些字段、要不要推荐新句子。返回 { reply, set, suggestions, searches, usage }。 */
+export async function suggest({ apiKey, request, current = {} }) {
+  const messages = [{ role: 'user', content: `当前字段：${JSON.stringify(cleanFields(current))}\n用户说：${request}` }];
   const searches = [];
   const usage = { input: 0, output: 0 };
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -80,7 +106,7 @@ export async function suggest({ apiKey, request }) {
     const calls = content.filter(b => b.type === 'tool_use');
     if (!calls.length) {
       const text = content.filter(b => b.type === 'text').map(b => b.text).join('');
-      return { suggestions: parseJson(text), searches, usage };
+      return { ...parseJson(text), searches, usage };
     }
     const results = [];
     for (const call of calls) {

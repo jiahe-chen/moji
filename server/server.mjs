@@ -55,18 +55,18 @@ http.createServer(async (req, res) => {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
   let raw = '';
   for await (const chunk of req) { raw += chunk; if (raw.length > 4000) return send(res, 413, { error: '内容太长' }, origin); }
-  let request;
-  try { request = String(JSON.parse(raw).request || '').trim(); } catch { return send(res, 400, { error: '请求格式不对' }, origin); }
-  if (!request) return send(res, 400, { error: '先说说想送给谁、什么场合' }, origin);
+  let request, current;
+  try { const body = JSON.parse(raw); request = String(body.request || '').trim(); current = body.current; } catch { return send(res, 400, { error: '请求格式不对' }, origin); }
+  if (!request) return send(res, 400, { error: '先说一句想写什么、送给谁' }, origin);
   if ([...request].length > 200) return send(res, 400, { error: '描述请控制在 200 字以内' }, origin);
   const blocked = allow(ip);
   if (blocked) return send(res, 429, { error: blocked }, origin);
 
   const t0 = Date.now();
   try {
-    const out = await suggest({ apiKey: KEY, request });
+    const out = await suggest({ apiKey: KEY, request, current });
     console.log(JSON.stringify({ at: new Date().toISOString(), ms: Date.now() - t0, searches: out.searches.length, usage: out.usage }));
-    send(res, 200, { suggestions: out.suggestions, searches: out.searches }, origin);
+    send(res, 200, { reply: out.reply, set: out.set, suggestions: out.suggestions, searches: out.searches }, origin);
   } catch (e) {
     console.error(e);
     send(res, 502, { error: 'AI 暂时没有回应，稍后再试' }, origin);

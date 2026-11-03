@@ -24,11 +24,11 @@
 
   <aside class="panel">
     <section class="ai" id="ai" hidden>
-      <h2>AI 帮我选句</h2>
-      <label class="sr" for="ai-q">想送给谁、什么场合、什么风格</label>
-      <textarea id="ai-q" rows="2" maxlength="200" placeholder="例：送给刚升职的同学，要有干劲；或者：给朋友的，搞笑一点"></textarea>
-      <button id="ai-go" type="button" class="btn">帮我选句</button>
-      <p class="hint" id="ai-msg" aria-live="polite"></p>
+      <h2>说一句，AI 来写</h2>
+      <label class="sr" for="ai-q">想写什么、送给谁、你是谁</label>
+      <textarea id="ai-q" rows="3" maxlength="200" placeholder="例：送给刚升职的张三，我是李四，挂办公室，要有干劲"></textarea>
+      <button id="ai-go" type="button" class="btn primary">写一幅</button>
+      <p class="hint" id="ai-msg" aria-live="polite">按回车发送。写好后可以接着说：署名改成王五、换成竖的、再狂一点、换一句。</p>
       <ol class="ai-list" id="ai-list"></ol>
     </section>
 
@@ -51,6 +51,7 @@
 
       <fieldset class="fmt">
         <legend>版式</legend>
+        <label><input type="radio" name="fmt" value="auto"><span>自动<small id="fmt-auto"></small></span></label>
         <label><input type="radio" name="fmt" value="tiaofu"><span>条幅</span></label>
         <label><input type="radio" name="fmt" value="doufang"><span>斗方</span></label>
         <label><input type="radio" name="fmt" value="hengpi"><span>横披</span></label>
@@ -58,7 +59,7 @@
     </form>
 
     <div class="actions">
-      <button id="b-again" type="button" class="btn primary">重写一幅</button>
+      <button id="b-again" type="button" class="btn">重写一幅</button>
       <button id="b-share" type="button" class="btn">复制分享链接</button>
       <button id="b-png" type="button" class="btn">下载图片</button>
       <button id="b-pdf" type="button" class="btn">下载 PDF</button>

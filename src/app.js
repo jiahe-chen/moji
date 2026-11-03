@@ -1,6 +1,6 @@
 // 网页：读写表单和网址参数，调用引擎预览，导出图片和 PDF，接 AI 选句。
 import { createScene, finish, animate, FONT } from './engine.js';
-import { layout, hanOnly } from './layout.js';
+import { layout, hanOnly, FORMATS } from './layout.js';
 import { ganzhiSeason } from './calendar.js';
 import { toQuery, fromQuery } from './share.js';
 import { jpegToPdf } from './pdf.js';
@@ -14,9 +14,9 @@ const newSeed = () => (Math.random() * 1e9) | 0;
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const tick = () => new Promise(r => setTimeout(r, 0));
 
-const DEFAULTS = { text: '厚德载物', src: '周易句', to: '', from: '墨迹', date: ganzhiSeason(), lead: '', format: 'doufang', wild: .5 };
+const DEFAULTS = { text: '厚德载物', src: '周易句', to: '', from: '墨迹', date: ganzhiSeason(), lead: '', format: 'auto', wild: .5 };
 // 打开分享链接时，链接里没写的项就是留空，不能拿首次访问的示例去补
-const BLANK = { text: '', src: '', to: '', from: '', date: '', lead: '', format: 'tiaofu', wild: .5 };
+const BLANK = { text: '', src: '', to: '', from: '', date: '', lead: '', format: 'auto', wild: .5 };
 const state = fromQuery(location.search, new URLSearchParams(location.search).has('t') ? BLANK : DEFAULTS);
 if (!state.seed) state.seed = newSeed();
 
@@ -36,8 +36,8 @@ $('form').addEventListener('input', e => {
   const t = e.target;
   const key = Object.keys(fields).find(k => fields[k] === t.id);
   if (key) state[key] = t.value;
-  if (t.name === 'fmt') state.format = t.value;
-  if (t.id === 'f-wild') { state.wild = +t.value / 100; $('o-wild').value = t.value; }
+  if (t.name === 'fmt') { state.format = t.value; pinned.format = t.value !== 'auto'; }
+  if (t.id === 'f-wild') { state.wild = +t.value / 100; $('o-wild').value = t.value; pinned.wild = true; }
   syncUrl();
   clearTimeout(debounce);
   debounce = setTimeout(() => render(), 500);
@@ -64,6 +64,7 @@ async function render({ anim = false } = {}) {
   stopAnim?.(); stopAnim = null;
   const plan = layout(state);
   if (!plan) { status('正文里还没有汉字'); return; }
+  $('fmt-auto').textContent = plan.auto ? `·${FORMATS[plan.format].label}` : '';
   status('研墨中…');
   await loadFonts(plan);
   if (id !== renderId) return;
@@ -138,28 +139,52 @@ function download(blob, name) {
 $('b-png').addEventListener('click', () => exportArt('png'));
 $('b-pdf').addEventListener('click', () => exportArt('pdf'));
 
-// ---- AI 选句 ----
-if (AI_ENDPOINT) {
-  $('ai').hidden = false;
-  $('ai-go').addEventListener('click', async () => {
-    const q = $('ai-q').value.trim();
-    if (!q) { msg('先说说想送给谁、什么场合', 'ai-msg'); return; }
-    $('ai-go').disabled = true; $('ai-list').replaceChildren();
-    msg('正在选句，并上网核对原文…大约半分钟', 'ai-msg');
-    try {
-      const res = await fetch(AI_ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ request: q }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'AI 暂时没有回应');
-      showSuggestions(data.suggestions || []);
-      msg(data.searches?.length ? `核对了 ${data.searches.length} 次搜索` : '', 'ai-msg');
-    } catch (e) { msg(e.message || 'AI 暂时没有回应，稍后再试', 'ai-msg'); }
-    finally { $('ai-go').disabled = false; }
-  });
+// ---- AI：说一句话，直接改字段、选句、写出来 ----
+const FIELD_KEYS = ['text', 'src', 'to', 'from', 'date', 'lead', 'format', 'wild'];
+const pick = o => Object.fromEntries(FIELD_KEYS.filter(k => o[k] !== undefined).map(k => [k, o[k]]));
+let shown = [];   // 当前列出的候选句
+// 用户明确定过的版式、放纵度，之后换句子时保持不变；没定过的才跟着候选句走
+const pinned = { format: state.format !== 'auto', wild: false };
+
+function useSuggestion(s) {
+  state.text = s.text; state.src = s.src || ''; state.lead = s.lead || '';
+  if (!pinned.format && s.format) state.format = s.format;
+  if (!pinned.wild && s.wild !== undefined) state.wild = s.wild;
 }
-function showSuggestions(list) {
-  const ol = $('ai-list');
-  for (const s of list) {
-    const li = document.createElement('li');
+
+async function askAI() {
+  const q = $('ai-q').value.trim();
+  if (!q) { msg('先说一句：想写什么、送给谁、你是谁', 'ai-msg'); return; }
+  $('ai-go').disabled = true;
+  msg('AI 正在想…要选新句子的话，会先上网核对原文，大约十几秒', 'ai-msg');
+  try {
+    const res = await fetch(AI_ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ request: q, current: pick(state) }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'AI 暂时没有回应');
+    const set = pick(data.set || {}), list = data.suggestions || [];
+    const before = state.text;
+    Object.assign(state, set);
+    if ('format' in set) pinned.format = set.format !== 'auto';
+    if ('wild' in set) pinned.wild = true;
+    if (list.length) { useSuggestion(list[0]); showSuggestions(list, 0); }
+    if (!list.length && !Object.keys(set).length) { msg(data.reply || '没听懂要改什么，换个说法试试', 'ai-msg'); return; }
+    // 换了正文就换个种子重新写；只改落款、版式这类，保留种子，正文的字形不变
+    const fresh = state.text !== before;
+    if (fresh) state.seed = newSeed();
+    fillForm(); syncUrl(); render({ anim: fresh });
+    msg(data.reply || '写好了', 'ai-msg');
+    $('ai-q').value = '';
+    $('ai-q').placeholder = '接着说：署名改成王五、换成竖的、再狂一点、换一句';
+    if (fresh) $('mount').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+  } catch (e) { msg(e.message || 'AI 暂时没有回应，稍后再试', 'ai-msg'); }
+  finally { $('ai-go').disabled = false; }
+}
+
+function showSuggestions(list, active) {
+  shown = list;
+  const ol = $('ai-list'); ol.replaceChildren();
+  list.forEach((s, idx) => {
+    const li = document.createElement('li'); li.classList.toggle('on', idx === active);
     const add = (cls, text, tag = 'div') => { const el = document.createElement(tag); el.className = cls; el.textContent = text; li.append(el); return el; };
     add('ai-text', s.text);
     add('ai-meta', [s.author, s.work && `《${s.work}》`].filter(Boolean).join(' ') + (s.lead ? ` · 引首章“${s.lead}”` : ''));
@@ -168,15 +193,24 @@ function showSuggestions(list) {
       const src = add('ai-src', '核对：');
       s.sources.forEach((u, i) => { const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; a.textContent = `来源${i + 1}`; src.append(a, ' '); });
     }
-    const b = add('btn ai-use', '用这句', 'button'); b.type = 'button';
+    const b = add('btn ai-use', idx === active ? '正在用' : '换这句', 'button'); b.type = 'button';
     b.addEventListener('click', () => {
-      Object.assign(state, { text: s.text, src: s.src, lead: s.lead, seed: newSeed() });
-      fillForm(); syncUrl(); render({ anim: true });
-      document.getElementById('mount').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      if (li.classList.contains('on')) return;
+      useSuggestion(s); state.seed = newSeed();
+      fillForm(); syncUrl(); render({ anim: true }); showSuggestions(shown, idx);
+      $('mount').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
     });
     ol.append(li);
-  }
-  if (!list.length) msg('这次没有找到合适的句子，换个说法试试', 'ai-msg');
+  });
+}
+
+if (AI_ENDPOINT) {
+  $('ai').hidden = false;
+  $('ai-go').addEventListener('click', askAI);
+  // 回车发送，Shift+回车换行；输入法选字时的回车不算
+  $('ai-q').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); askAI(); } });
+} else {
+  $('b-again').classList.add('primary');
 }
 
 fillForm(); syncUrl(); render({ anim: true });

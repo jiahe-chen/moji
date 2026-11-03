@@ -19,7 +19,9 @@ function candidates(text) {
   if (raw.includes('\n')) return [{ lines: raw.split(/\n+/).map(hanOnly).filter(l => l.length), forced: true }];
   const all = hanOnly(raw), out = [];
   const clauses = raw.split(/[^\p{Script=Han}]+/u).map(hanOnly).filter(l => l.length);
-  if (clauses.length > 1) out.push({ lines: clauses, natural: true });
+  // 各句长短接近才算“一句一行”；夹着“谁怕”这种两字短句的，连着写更好看
+  const lens = clauses.map(l => l.length);
+  if (clauses.length > 1) out.push({ lines: clauses, natural: Math.min(...lens) >= Math.max(...lens) * .6 });
   for (let r = 1; r <= all.length; r++) {
     const lines = [];
     for (let i = 0; i < all.length; i += r) lines.push(all.slice(i, i + r));
@@ -37,14 +39,20 @@ function inscLines({ src, to, date, from }) {
   return [first, second].filter(Boolean);
 }
 
+// 一列写不下时优先在空格处断开（“录××句”和“书赠××”各占一列），一段本身太长才从中间断
 function splitColumn(text, maxLen) {
-  const cols = []; let cur = '', len = 0;
-  for (const ch of text) {
-    const l = ch === '　' ? .5 : 1;
-    if (len + l > maxLen && cur) { cols.push(cur.replace(/^　+|　+$/g, '')); cur = ''; len = 0; if (ch === '　') continue; }
-    cur += ch; len += l;
+  const max = Math.max(1, Math.floor(maxLen));
+  const L = t => [...t].reduce((a, ch) => a + (ch === '　' ? .5 : 1), 0);
+  const cols = []; let cur = '';
+  for (const part of text.split('　').filter(Boolean)) {
+    const joined = cur ? cur + '　' + part : part;
+    if (L(joined) <= max) { cur = joined; continue; }
+    if (cur) cols.push(cur);
+    const chars = [...part];
+    while (chars.length > max) cols.push(chars.splice(0, max).join(''));
+    cur = chars.join('');
   }
-  if (cur.trim()) cols.push(cur.replace(/^　+|　+$/g, ''));
+  if (cur) cols.push(cur);
   return cols;
 }
 
@@ -59,10 +67,27 @@ function sealChars(name) {
 
 /**
  * @param input {text, src, to, from, date, lead, format, wild}
+ *   format：tiaofu / doufang / hengpi，其他值（如 auto）表示自动挑选
  *   wild：放纵度 0~1，越大字越欹侧、大小反差越大
+ * @returns 排版方案；plan.format 是实际用的版式，plan.auto 表示是自动挑的
  */
 export function layout(input) {
-  const F = FORMATS[input.format] || FORMATS.tiaofu, W = F.w, H = F.h;
+  if (FORMATS[input.format]) return layoutIn(input.format, input);
+  // 自动版式：三种都排一遍，看墨迹占纸面的比例，字越饱满越好；一句一行的读起来更自然，加分
+  let best = null, bestScore = -1;
+  for (const key of ['tiaofu', 'doufang', 'hengpi']) {
+    const p = layoutIn(key, input);
+    if (!p) return null;
+    const n = p.cols.reduce((a, c) => a + c.chars.length, 0);
+    const score = n * p.s * p.s / (p.w * p.h) * (p.natural ? 1.6 : 1);
+    if (score > bestScore * 1.0001) { best = p; bestScore = score; }
+  }
+  best.auto = true;
+  return best;
+}
+
+function layoutIn(key, input) {
+  const F = FORMATS[key], W = F.w, H = F.h;
   const wild = Math.min(1, Math.max(0, input.wild ?? .5));
   const lead = toTrad(hanOnly(input.lead)).slice(0, 2);
   const lines = inscLines(input);
@@ -119,7 +144,7 @@ export function layout(input) {
   const leadPlan = lead.length ? { chars: lead, w: leadW, h: lead.length === 1 ? leadW * 1.2 : leadH, x: Math.min(W - leadW - W * .025, cols[0].x + s * .62), y: top + s * .05 } : null;
 
   return {
-    w: W, h: H, cols,
+    format: key, w: W, h: H, s, natural: !!(best.natural || best.forced), cols,
     center: best.lines.every(l => l.length === 1),
     size: [s * (.86 - wild * .06), s * (.12 + wild * .2)],
     tilt: .12 + wild * .28, spread: .1 + wild * .22, drift: s * (.04 + wild * .12),

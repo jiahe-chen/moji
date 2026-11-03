@@ -6,7 +6,8 @@
 
 - 同一个链接打开，永远是同一幅字。所有参数都写在网址里，发到微信就能分享。
 - 浏览器里直接下载 300dpi 高清 PNG 和 PDF，可以拿去打印装裱。
-- AI 帮你选句：说出想送给谁、什么场合，DeepSeek V4.1 推荐几句，并上网核对原文和出处。
+- 说一句话，AI 来写：比如「送给刚升职的张三，我是李四，挂办公室」。DeepSeek V4.1 会识别出赠给、署名、版式和风格，选好句子、上网核对原文后直接写出来。之后接着说「署名改成王五」「换成竖的」「再狂一点」「换一句」，AI 直接改。
+- 版式默认自动：条幅、斗方、横披都排一遍，挑字最饱满、断句最自然的那种。
 - 面向国内用户：字体全部自托管，不依赖 Google Fonts。
 
 ## 它是怎么写字的
@@ -32,7 +33,7 @@
 | `src` | 出处，落款里写成「录××」 | `李白行路难句` |
 | `date` | 日期，默认按今天的干支和季节 | `丙午秋` |
 | `lead` | 引首章，1–2 个字 | `长风` |
-| `fmt` | 版式：`tiaofu` 条幅、`doufang` 斗方、`hengpi` 横披 | `tiaofu` |
+| `fmt` | 版式：`auto` 自动（默认）、`tiaofu` 条幅、`doufang` 斗方、`hengpi` 横披 | `auto` |
 | `w` | 放纵度 0–100，越大越欹侧 | `50` |
 | `s` | 随机种子 | `102` |
 
@@ -61,7 +62,7 @@ uvx --from fonttools --with brotli python tools/build_fonts.py
 
 ## AI 选句代理（`server/`）
 
-网页里的「AI 帮我选句」会调用一个代理服务。代理用站长的 DeepSeek Key 运行选句助手：模型是 `deepseek-flash`（DeepSeek-V4.1-Flash），对话走 Messages 接口，并用 DeepSeek 官方 Search 接口核对原文。协议和 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 一致。代理只开放搜索这一个工具，不能读写文件，也不能执行命令。
+网页里的「说一句，AI 来写」会调用一个代理服务。网页把用户的话和当前各字段一起发过去，代理返回要改的字段和候选句子。代理用站长的 DeepSeek Key 运行这个助手：模型是 `deepseek-flash`（DeepSeek-V4.1-Flash），对话走 Messages 接口，并用 DeepSeek 官方 Search 接口核对原文。协议和 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 一致。代理只开放搜索这一个工具，不能读写文件，也不能执行命令。
 
 ```bash
 DEEPSEEK_API_KEY=sk-... npm run agent      # 本地启动，监听 8787，网页在 localhost 上会自动连它
