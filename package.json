@@ -1,0 +1,16 @@
+{
+  "name": "moji",
+  "version": "0.1.0",
+  "description": "代码生成书法：字形取自开源书法字体，墨色、飞白、纸纹、印章全部由算法生成",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "render": "node tools/render.mjs",
+    "serve": "python3 -m http.server 8080",
+    "agent": "node server/server.mjs"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "0.1.65"
+  }
+}

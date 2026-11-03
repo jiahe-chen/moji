@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨迹 moji · 代码写的书法</title>
+<meta name="description" content="输入诗句，自动写成行草书法：落款、小篆印章、宣纸纹理一应俱全，可分享链接、导出高清图片和 PDF。">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='3' fill='%23b8322a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%23f2eee4' font-family='serif'%3E墨%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="brand-zh">墨迹</span><span class="brand-en">moji</span></div>
+  <p class="tag">输入诗句，代码替你写成一幅书法</p>
+  <a class="gh" href="https://github.com/jiahe-chen/moji" target="_blank" rel="noopener">开源代码</a>
+</header>
+
+<main class="studio">
+  <figure class="mount" id="mount">
+    <canvas id="c" width="1000" height="1000" aria-label="书法作品预览"></canvas>
+    <figcaption class="status" id="status" hidden></figcaption>
+  </figure>
+
+  <aside class="panel">
+    <section class="ai" id="ai" hidden>
+      <h2>AI 帮我选句</h2>
+      <label class="sr" for="ai-q">想送给谁、什么场合、什么风格</label>
+      <textarea id="ai-q" rows="2" maxlength="200" placeholder="例：送给刚升职的同学，要有干劲；或者：给朋友的，搞笑一点"></textarea>
+      <button id="ai-go" type="button" class="btn">帮我选句</button>
+      <p class="hint" id="ai-msg" aria-live="polite"></p>
+      <ol class="ai-list" id="ai-list"></ol>
+    </section>
+
+    <form id="form" autocomplete="off">
+      <label for="f-text">正文</label>
+      <textarea id="f-text" rows="3" placeholder="要写的字。手动换行可以指定分行，否则自动排"></textarea>
+
+      <div class="row2">
+        <div><label for="f-to">赠给</label><input id="f-to" placeholder="受赠人"></div>
+        <div><label for="f-from">署名</label><input id="f-from" placeholder="你的名字，也刻在印章上"></div>
+      </div>
+      <div class="row2">
+        <div><label for="f-src">出处</label><input id="f-src" placeholder="如：李白行路难句"></div>
+        <div><label for="f-date">日期</label><input id="f-date" placeholder="如：丙午秋"></div>
+      </div>
+      <div class="row2">
+        <div><label for="f-lead">引首章</label><input id="f-lead" maxlength="2" placeholder="两个字，可空"></div>
+        <div><label for="f-wild">放纵 <output id="o-wild"></output></label><input id="f-wild" type="range" min="0" max="100" step="5"></div>
+      </div>
+
+      <fieldset class="fmt">
+        <legend>版式</legend>
+        <label><input type="radio" name="fmt" value="tiaofu"><span>条幅</span></label>
+        <label><input type="radio" name="fmt" value="doufang"><span>斗方</span></label>
+        <label><input type="radio" name="fmt" value="hengpi"><span>横披</span></label>
+      </fieldset>
+    </form>
+
+    <div class="actions">
+      <button id="b-again" type="button" class="btn primary">重写一幅</button>
+      <button id="b-share" type="button" class="btn">复制分享链接</button>
+      <button id="b-png" type="button" class="btn">下载图片</button>
+      <button id="b-pdf" type="button" class="btn">下载 PDF</button>
+    </div>
+    <p class="hint" id="msg" aria-live="polite"></p>
+    <p class="hint seed" id="seed"></p>
+  </aside>
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-body">
+    <p id="sheet-text"></p>
+    <img id="sheet-img" alt="生成的书法大图，长按保存" hidden>
+    <button id="sheet-close" type="button" class="btn">关闭</button>
+  </div>
+</div>
+
+<footer class="foot">
+  <p>字形取自开源字体：刘建毛草、智芒行、马善政（SIL OFL）；篆字取自崇羲篆體 © 中央研究院（CC BY-ND 3.0 TW）；简繁对照来自 OpenCC。墨色、飞白、纸纹、印章全部由代码生成，同一个链接永远是同一幅字。</p>
+</footer>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
