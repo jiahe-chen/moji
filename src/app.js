@@ -15,7 +15,9 @@ const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; 
 const tick = () => new Promise(r => setTimeout(r, 0));
 
 const DEFAULTS = { text: '厚德载物', src: '周易句', to: '', from: '墨迹', date: ganzhiSeason(), lead: '', format: 'doufang', wild: .5 };
-const state = fromQuery(location.search, DEFAULTS);
+// 打开分享链接时，链接里没写的项就是留空，不能拿首次访问的示例去补
+const BLANK = { text: '', src: '', to: '', from: '', date: '', lead: '', format: 'tiaofu', wild: .5 };
+const state = fromQuery(location.search, new URLSearchParams(location.search).has('t') ? BLANK : DEFAULTS);
 if (!state.seed) state.seed = newSeed();
 
 // ---- 表单 ----
