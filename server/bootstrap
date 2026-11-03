@@ -1,0 +1,6 @@
+#!/bin/bash
+# 阿里云函数计算（Web 函数、自定义运行时）的启动脚本：用平台内置的 Node.js 20 启动代理，监听 9000 端口。
+export PATH=/var/fc/lang/nodejs20/bin:$PATH
+export PORT=${PORT:-9000}
+cd "$(dirname "$0")"
+exec node server.mjs

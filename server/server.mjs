@@ -71,4 +71,4 @@ http.createServer(async (req, res) => {
     console.error(e);
     send(res, 502, { error: 'AI 暂时没有回应，稍后再试' }, origin);
   }
-}).listen(PORT, () => console.log(`moji AI 代理已启动：http://localhost:${PORT}/api/suggest`));
+}).listen(PORT, '0.0.0.0', () => console.log(`moji AI 代理已启动：http://localhost:${PORT}/api/suggest`));   // 云函数要求监听 0.0.0.0

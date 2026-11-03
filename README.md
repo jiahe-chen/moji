@@ -69,14 +69,19 @@ DEEPSEEK_API_KEY=sk-... npm run agent      # 本地启动，监听 8787，网页
 
 部署到阿里云函数计算（国内能访问）：
 
-1. 新建「Web 函数」，运行环境选 Node.js 20，代码上传 `server/` 目录，启动命令 `node server.mjs`，监听端口 9000。
-2. 环境变量：
+1. 打包：`python3 tools/pack_server.py`，得到 `dist/moji-ai-server.zip`。包里的 `bootstrap` 是启动脚本，用平台内置的 Node.js 20 在 9000 端口启动代理。
+2. 在函数计算控制台新建「Web 函数」：
+   - 运行环境：选「自定义运行时」。
+   - 代码：「通过 ZIP 包上传代码」，选上一步的 zip。
+   - 启动命令：留空（会自动用 `bootstrap`）。
+   - 监听端口：`9000`。
+   - 执行超时时间：改成 `120` 秒，选句时要上网核对，一次大约 20–60 秒。
+3. 在「更多配置 → 环境变量」里填：
    - `DEEPSEEK_API_KEY`：你的 Key
-   - `PORT=9000`
-   - `ALLOWED_ORIGINS=https://jiahe-chen.github.io`
+   - `ALLOWED_ORIGINS`：`https://jiahe-chen.github.io`
    - 按需设置 `PER_IP_PER_HOUR`（默认 10）和 `DAILY_LIMIT`（默认 300）
-3. 添加 HTTP 触发器，把得到的公网地址加上 `/api/suggest`，填进 `src/config.js` 的 `ONLINE`。
-4. 在 DeepSeek 后台给这个 Key 设置消费上限，作为最后一道保险。
+4. 在函数的「触发器」页签确认有一个 HTTP 触发器，认证方式选「无需认证」，请求方式包含 POST 和 OPTIONS。复制公网访问地址，加上 `/api/suggest`，填进 `src/config.js` 的 `ONLINE`。
+5. 在 DeepSeek 后台给这个 Key 设置消费上限，作为最后一道保险。
 
 `server/test/mock-deepseek.mjs` 是一个模拟的 DeepSeek，没有 Key 也能把整个流程测一遍：
 
