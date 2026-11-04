@@ -1,0 +1,14 @@
+[
+  {"id":"daoshi","tag":"祝福","scene":"送导师","text":"桃李不言，下自成蹊","src":"史记李将军列传句","to":"王老师","from":"小林","date":"丙午秋","lead":"桃李","format":"auto","wild":0.4,"seed":22,"thumb":[520,520]},
+  {"id":"changle","tag":"祝福","scene":"送爸妈","text":"长乐未央","src":"汉瓦当吉语","to":"爸妈","from":"小雨","date":"丙午秋","lead":"大吉","format":"auto","wild":0.45,"seed":11,"thumb":[520,520]},
+  {"id":"xinhun","tag":"祝福","scene":"新婚","text":"执子之手，与子偕老","src":"诗经击鼓句","to":"阿杰晓晴","from":"小周","date":"丙午秋","lead":"偕老","format":"auto","wild":0.45,"seed":11,"thumb":[520,520]},
+  {"id":"qiaoqian","tag":"祝福","scene":"乔迁新居","text":"如竹苞矣，如松茂矣","src":"诗经斯干句","to":"老张","from":"小林","date":"丙午秋","lead":"松茂","format":"auto","wild":0.45,"seed":33,"thumb":[520,520]},
+  {"id":"zhiji","tag":"祝福","scene":"送远行的朋友","text":"海内存知己，天涯若比邻","src":"王勃送杜少府之任蜀州句","to":"阿宁","from":"小周","date":"丙午秋","lead":"知己","format":"auto","wild":0.5,"seed":22,"thumb":[297,520]},
+  {"id":"biye","tag":"励志","scene":"毕业","text":"长风破浪会有时，直挂云帆济沧海","src":"李白行路难句","to":"学弟","from":"小林","date":"丙午秋","lead":"长风","format":"auto","wild":0.55,"seed":22,"thumb":[297,520]},
+  {"id":"kaoshi","tag":"励志","scene":"考试加油","text":"会当凌绝顶，一览众山小","src":"杜甫望岳句","to":"表弟","from":"表哥","date":"丙午秋","lead":"绝顶","format":"auto","wild":0.5,"seed":11,"thumb":[297,520]},
+  {"id":"e","tag":"有梗","scene":"发到群里","text":"鹅鹅鹅","src":"骆宾王咏鹅句","to":"群里各位","from":"小林","date":"丙午秋","lead":"曲项","format":"auto","wild":0.85,"seed":11,"thumb":[297,520]},
+  {"id":"chunmian","tag":"有梗","scene":"送爱赖床的室友","text":"春眠不觉晓，处处闻啼鸟","src":"孟浩然春晓句","to":"室友","from":"小雨","date":"丙午秋","lead":"春眠","format":"auto","wild":0.7,"seed":22,"thumb":[297,520]},
+  {"id":"linu","tag":"有梗","scene":"猫奴自用","text":"溪柴火软蛮毡暖，我与狸奴不出门","src":"陆游十一月四日风雨大作句","to":"咪咪","from":"铲屎官","date":"丙午秋","lead":"狸奴","format":"auto","wild":0.6,"seed":22,"thumb":[297,520]},
+  {"id":"chifan","tag":"有梗","scene":"送饭搭子","text":"民以食为天","src":"汉书郦食其传句","to":"饭搭子","from":"小周","date":"丙午秋","lead":"","format":"auto","wild":0.8,"seed":11,"thumb":[520,520]},
+  {"id":"hutu","tag":"有梗","scene":"打工人自勉","text":"难得糊涂","src":"郑板桥语","to":"","from":"打工人","date":"丙午秋","lead":"","format":"hengpi","wild":0.6,"seed":33,"thumb":[520,295]}
+]

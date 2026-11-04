@@ -23,11 +23,7 @@
   </figure>
 
   <aside class="panel" id="panel">
-    <section class="quick" aria-label="落款与分享">
-      <div class="row2">
-        <div><label for="f-to">赠给</label><input id="f-to" placeholder="受赠人"></div>
-        <div><label for="f-from">署名</label><input id="f-from" placeholder="你的名字，刻成印章"></div>
-      </div>
+    <section class="quick" aria-label="分享与下载">
       <div class="actions">
         <button id="b-share" type="button" class="btn">分享链接</button>
         <button id="b-png" type="button" class="btn">下载图片</button>
@@ -39,15 +35,25 @@
     <section class="ai" id="ai" hidden>
       <h2>说一句，AI 来写</h2>
       <label class="sr" for="ai-q">想写什么、送给谁、你是谁</label>
-      <textarea id="ai-q" rows="3" maxlength="200" placeholder="例：送给刚升职的张三，我是李四，挂办公室，要有干劲"></textarea>
+      <textarea id="ai-q" rows="3" maxlength="200" placeholder="想写什么、送给谁、你是谁">给我的导师王老师写一幅字，祝贺新书出版，我是小林</textarea>
+      <div class="ideas" aria-label="换个场景">
+        <button type="button" data-q="给我的导师王老师写一幅字，祝贺新书出版，我是小林">送导师</button>
+        <button type="button" data-q="给我妈写一幅生日祝福，要喜庆一点，我是小雨">生日</button>
+        <button type="button" data-q="送给新婚的阿杰和晓晴，祝白头偕老，我是小周">新婚</button>
+        <button type="button" data-q="给爱赖床的室友阿杰写一幅搞笑的，我是小周">搞笑</button>
+      </div>
       <button id="ai-go" type="button" class="btn primary">写一幅</button>
-      <p class="hint" id="ai-msg" aria-live="polite">按回车发送。写好后可以接着说：署名改成王五、换成竖的、再狂一点、换一句。</p>
+      <p class="hint" id="ai-msg" aria-live="polite">改成你的场景和名字，按回车发送。写好后可以接着说：署名改成王五、换成竖的、再狂一点、换一句。</p>
       <ol class="ai-list" id="ai-list"></ol>
     </section>
 
     <details class="more" id="more">
-      <summary>更多调整<span>正文、出处、日期、引首章、版式、放纵</span></summary>
+      <summary>高级设置<span>赠给、署名、正文、出处、日期、引首章、版式、放纵</span></summary>
       <div class="more-body">
+        <div class="row2">
+          <div><label for="f-to">赠给</label><input id="f-to" placeholder="受赠人"></div>
+          <div><label for="f-from">署名</label><input id="f-from" placeholder="你的名字，刻成印章"></div>
+        </div>
         <div><label for="f-text">正文</label>
         <textarea id="f-text" rows="3" placeholder="要写的字。手动换行可以指定分行，否则自动排"></textarea></div>
         <div class="row2">
@@ -73,6 +79,20 @@
     </details>
   </aside>
 </main>
+
+<section class="market" id="market" hidden>
+  <div class="market-head">
+    <h2>灵感集市</h2>
+    <p class="hint">挑一幅喜欢的，点「做同款」在编辑器里打开，改成你的场景和名字就能送人。</p>
+    <div class="tabs" id="tabs" role="group" aria-label="按类别看">
+      <button type="button" data-tag="" aria-pressed="true">全部</button>
+      <button type="button" data-tag="祝福" aria-pressed="false">祝福</button>
+      <button type="button" data-tag="励志" aria-pressed="false">励志</button>
+      <button type="button" data-tag="有梗" aria-pressed="false">有梗</button>
+    </div>
+  </div>
+  <ul class="works" id="works"></ul>
+</section>
 
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-body">

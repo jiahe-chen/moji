@@ -60,6 +60,8 @@ uvx --from fonttools --with brotli python tools/build_fonts.py
 
 这一步会顺带把原始 TTF 下载到 `tools/.cache/`，命令行出图要用。
 
+页面底部「灵感集市」里的示例作品，参数写在 `gallery/works.json`（每幅的正文、出处、落款、种子）。改完运行 `node tools/build_gallery.mjs` 重新生成缩略图；加 `--seeds 1,2,3 --out 目录` 可以先用几个种子各写一张，挑好看的。
+
 ## AI 选句代理（`server/`）
 
 网页里的「说一句，AI 来写」会调用一个代理服务。网页把用户的话和当前各字段一起发过去，代理返回要改的字段和候选句子。代理用站长的 DeepSeek Key 运行这个助手：模型是 `deepseek-flash`（DeepSeek-V4.1-Flash），对话走 Messages 接口，并用 DeepSeek 官方 Search 接口核对原文。协议和 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 一致。代理只开放搜索这一个工具，不能读写文件，也不能执行命令。

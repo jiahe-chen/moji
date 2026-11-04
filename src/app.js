@@ -205,6 +205,10 @@ function showSuggestions(list, active) {
 if (AI_ENDPOINT) {
   $('ai').hidden = false;
   $('ai-go').addEventListener('click', askAI);
+  // 场景按钮：把对应的说法填进输入框，改改名字就能发
+  for (const b of document.querySelectorAll('.ideas button')) b.addEventListener('click', () => {
+    const q = $('ai-q'); q.value = b.dataset.q; q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+  });
   // 回车发送，Shift+回车换行；输入法选字时的回车不算
   $('ai-q').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); askAI(); } });
 } else {
@@ -212,4 +216,26 @@ if (AI_ENDPOINT) {
   $('more').open = true;   // 没有 AI 时只能手动填正文
 }
 
+// ---- 灵感集市：事先写好的示例作品，点「做同款」就用同样的参数在编辑器里打开，是同一幅字 ----
+async function loadMarket() {
+  const works = await fetch('gallery/works.json').then(r => r.json()).catch(() => []);
+  if (!works.length) return;
+  const ul = $('works');
+  for (const w of works) {
+    const li = document.createElement('li'); li.dataset.tag = w.tag;
+    const a = document.createElement('a'); a.className = 'work'; a.href = '?' + toQuery(w);
+    const img = new Image(w.thumb[0], w.thumb[1]); img.loading = 'lazy'; img.src = `gallery/${w.id}.jpg`; img.alt = `书法：${w.text}`;
+    const add = (cls, text) => { const el = document.createElement('span'); el.className = cls; el.textContent = text; a.append(el); };
+    a.append(img); add('work-text', w.text); add('work-meta', `${w.scene} · ${w.tag}`); add('work-cta', '做同款');
+    li.append(a); ul.append(li);
+  }
+  $('market').hidden = false;
+  const tabs = [...document.querySelectorAll('#tabs button')];
+  for (const t of tabs) t.addEventListener('click', () => {
+    for (const x of tabs) x.setAttribute('aria-pressed', String(x === t));
+    for (const li of ul.children) li.hidden = !!t.dataset.tag && li.dataset.tag !== t.dataset.tag;
+  });
+}
+
 fillForm(); syncUrl(); render({ anim: true });
+loadMarket();
