@@ -9,7 +9,11 @@
 //   PER_IP_PER_HOUR    每个 IP 每小时最多几次，默认 10
 //   DAILY_LIMIT        全站每天最多几次，默认 300（防止费用失控；DeepSeek 后台也建议设消费上限）
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
 import { suggest } from './agent.mjs';
+
+// 打包时写入的代码版本（tools/pack_server.py），部署脚本靠它确认线上已经换成新代码
+const VERSION = (() => { try { return readFileSync(new URL('./version.txt', import.meta.url), 'utf8').trim(); } catch { return 'dev'; } })();
 
 const KEY = process.env.DEEPSEEK_API_KEY;
 if (!KEY) { console.error('缺少环境变量 DEEPSEEK_API_KEY'); process.exit(1); }
@@ -48,7 +52,7 @@ http.createServer(async (req, res) => {
     } : {});
     return res.end();
   }
-  if (req.method === 'GET' && req.url === '/api/health') return send(res, 200, { ok: true, today: dayCount, limit: DAILY }, origin);
+  if (req.method === 'GET' && req.url === '/api/health') return send(res, 200, { ok: true, version: VERSION, today: dayCount, limit: DAILY }, origin);
   if (req.method !== 'POST' || req.url !== '/api/suggest') return send(res, 404, { error: '没有这个接口' }, origin);
   if (!origin) return send(res, 403, { error: '不允许的来源' }, null);
 

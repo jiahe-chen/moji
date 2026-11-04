@@ -84,6 +84,26 @@ DEEPSEEK_API_KEY=sk-... npm run agent      # 本地启动，监听 8787，网页
 4. 在函数的「触发器」页签确认有一个 HTTP 触发器，认证方式选「无需认证」，请求方式包含 POST 和 OPTIONS。复制公网访问地址，加上 `/api/suggest`，填进 `src/config.js` 的 `ONLINE`。
 5. 在 DeepSeek 后台给这个 Key 设置消费上限，作为最后一道保险。
 
+函数建好以后，改了代理代码不用再进控制台，一条命令就能更新：
+
+```bash
+npm run deploy
+```
+
+它会打包、用[阿里云 CLI](https://help.aliyun.com/zh/cli/) 把代码传上去、等函数计算部署完，再请求线上的 `/api/health`，看到新版本号才算成功。只换代码，环境变量和触发器都不动。部署前后会核对环境变量，少了一个就报错。函数名和地域默认是 `noji-ai`、`cn-hangzhou`，可以用环境变量 `FC_FUNCTION`、`FC_REGION` 改。加 `--dry-run` 只打印要发的请求，不真的部署。
+
+第一次用之前，装好 CLI 并登录一次：
+
+```bash
+curl -sSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz | tar xz -C ~/.local/bin aliyun
+```
+
+```bash
+aliyun configure --mode OAuth
+```
+
+macOS 把下载地址里的 `linux` 换成 `macosx`。登录走浏览器授权，不用创建 AccessKey，地域填 `cn-hangzhou`。如果用 RAM 子账号登录，需要主账号先在 RAM 控制台的「集成 → OAuth 应用」里授权阿里云 CLI。
+
 `server/test/mock-deepseek.mjs` 是一个模拟的 DeepSeek，没有 Key 也能把整个流程测一遍：
 
 ```bash

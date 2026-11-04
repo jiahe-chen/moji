@@ -8,7 +8,8 @@
   "scripts": {
     "render": "node tools/render.mjs",
     "serve": "python3 -m http.server 8080",
-    "agent": "node server/server.mjs"
+    "agent": "node server/server.mjs",
+    "deploy": "node tools/deploy_server.mjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "0.1.65"
