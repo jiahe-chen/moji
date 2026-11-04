@@ -107,6 +107,14 @@ aliyun configure --mode OAuth
 
 macOS 把下载地址里的 `linux` 换成 `macosx`。登录走浏览器授权，不用创建 AccessKey，地域填 `cn-hangzhou`。如果用 RAM 子账号登录，需要主账号先在 RAM 控制台的「集成 → OAuth 应用」里授权阿里云 CLI。
 
+访问报表：代理每次 AI 调用、网页每次打开、下载、分享都会打一行匿名 JSON 日志。给函数开了日志服务（控制台「配置 → 日志」，或者用 CLI 设置函数的 `logConfig`），就能按天出报表：
+
+```bash
+npm run stats -- --days 7
+```
+
+报表列出打开次数、访客数（按“这个浏览器当天第一次来”估算）、来自分享链接和灵感集市的次数、微信和手机的占比、下载、分享、AI 调用，以及从哪些网站点进来。
+
 `server/test/mock-deepseek.mjs` 是一个模拟的 DeepSeek，没有 Key 也能把整个流程测一遍：
 
 ```bash
