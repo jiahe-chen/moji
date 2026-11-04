@@ -113,7 +113,13 @@ export async function suggest({ apiKey, request, current = {} }) {
     const calls = content.filter(b => b.type === 'tool_use');
     if (!calls.length) {
       const text = content.filter(b => b.type === 'text').map(b => b.text).join('');
-      return { ...parseJson(text), searches, usage };
+      const out = parseJson(text);
+      // 推荐了句子却一次没搜：打回去先核对，不能凭记忆给原文
+      if (out.suggestions.length && !searches.length && round < MAX_ROUNDS - 2) {
+        messages.push({ role: 'user', content: '这些句子还没有用 web_search 核对原文、作者和篇名。先逐条核对，再重新给出 JSON。' });
+        continue;
+      }
+      return { ...out, searches, usage };
     }
     const results = [];
     for (const call of calls) {
