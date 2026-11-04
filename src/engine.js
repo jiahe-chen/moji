@@ -302,20 +302,59 @@ export async function createScene(g, plan, { K = 1, seed = 1, mk, tick, onProgre
     },
   });
 
-  // 牵丝：上字收笔连到下字起笔的一根游丝，粗细渐变，墨少时断续
-  function silkPiece(a, b, w, dry, s, rnd) {
-    const pts = [], cx = (a.x + b.x) / 2 + (rnd() - .5) * s * .35, cy = (a.y + b.y) / 2 + (rnd() - .5) * s * .06, n = 80;
+  // 字形里真实的笔尖：最下面一笔的收笔（bottom）或最上面一笔的起笔；取端头一小段墨迹的中心，避开毛刺
+  function inkTip(cnv, bottom) {
+    const S = cnv.width, d = cnv.getContext('2d').getImageData(0, 0, S, S).data, band = Math.max(3, Math.round(S * .025));
+    const ink = (x, y) => d[(y * S + x) * 4 + 3] > 160;
+    for (let k = 0; k < S - band; k++) {
+      const y0 = bottom ? S - 1 - k : k;
+      let x0 = -1; for (let x = 0; x < S; x++) if (ink(x, y0)) { x0 = x; break; }
+      if (x0 < 0) continue;
+      let sx = 0, n = 0;
+      for (let j = 0; j < band; j++) {
+        const y = bottom ? y0 - j : y0 + j;
+        for (let x = Math.max(0, x0 - S * .06 | 0); x < Math.min(S, x0 + S * .06); x++) if (ink(x, y)) { sx += x; n++; }
+      }
+      if (n >= band * 2) return { x: sx / n, y: bottom ? y0 - band * .6 : y0 + band * .6 };   // 太细的是毛刺，接着往里找
+    }
+    return null;
+  }
+
+  // 牵丝：上字收笔顺势连到下字起笔的一根游丝。整根朝一侧微微弯成弧，不打小弯、不扭成 S；
+  // 出锋处粗、中段收细、入笔前略回粗；墨少时断开一两处
+  function silkPiece(a, b, w, dry, rnd) {
+    const L = b.y - a.y, dx = b.x - a.x, bow = (rnd() - .5) * L * .3;
+    const c1 = { x: a.x + dx / 3 + bow, y: a.y + L / 3 }, c2 = { x: a.x + dx * 2 / 3 + bow, y: a.y + L * 2 / 3 };
+    const gaps = dry ? Array.from({ length: rnd() < .5 ? 1 : 2 }, () => { const t = .3 + rnd() * .4; return [t, t + .05 + rnd() * .08]; }) : [];
+    const n = 48, pts = [];
     for (let i = 0; i <= n; i++) {
       const t = i / n, u = 1 - t;
-      if (t > .35 && rnd() < .06 + dry * .6) continue;
-      const x = u * u * a.x + 2 * u * t * cx + t * t * b.x, y = u * u * a.y + 2 * u * t * cy + t * t * b.y;
-      const r = w * (.3 + .7 * Math.pow(Math.sin(Math.PI * (.12 + .76 * t)), .8)) * (1 - .45 * t);
-      pts.push({ x, y, r, a: .5 + rnd() * .35 });
+      pts.push({
+        x: u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * b.x,
+        y: u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * b.y,
+        r: w * (.35 + .65 * Math.pow(u, 1.5) + .3 * Math.pow(t, 4)),
+        gap: gaps.some(([t0, t1]) => t > t0 && t < t1),
+      });
     }
+    pts.forEach((p, i) => {   // 法线方向，用来把中线扩成有粗细的笔画
+      const q0 = pts[Math.max(0, i - 1)], q1 = pts[Math.min(n, i + 1)], len = Math.hypot(q1.x - q0.x, q1.y - q0.y) || 1;
+      p.nx = -(q1.y - q0.y) / len; p.ny = (q1.x - q0.x) / len;
+    });
     return {
       dur: 150, draw(k) {
-        const m = Math.floor(pts.length * Math.min(1, k)); g.fillStyle = `rgb(${INK})`;
-        for (let i = 0; i < m; i++) { const p = pts[i]; g.globalAlpha = p.a; g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill(); }
+        const m = Math.floor(pts.length * Math.min(1, k));
+        g.fillStyle = `rgb(${INK})`; g.globalAlpha = .9;
+        for (let i = 0; i < m;) {   // 每段连续的墨画成一个封闭轮廓，端头补圆
+          if (pts[i].gap) { i++; continue; }
+          let j = i; while (j + 1 < m && !pts[j + 1].gap) j++;
+          const run = pts.slice(i, j + 1);
+          g.beginPath();
+          run.forEach((p, q) => g[q ? 'lineTo' : 'moveTo'](p.x + p.nx * p.r, p.y + p.ny * p.r));
+          for (const p of run.reverse()) g.lineTo(p.x - p.nx * p.r, p.y - p.ny * p.r);
+          g.closePath(); g.fill();
+          const e = pts[j]; g.beginPath(); g.arc(e.x, e.y, e.r, 0, 7); g.fill();
+          i = j + 1;
+        }
         g.globalAlpha = 1;
       },
     };
@@ -356,12 +395,18 @@ export async function createScene(g, plan, { K = 1, seed = 1, mk, tick, onProgre
       drift = Math.max(-plan.drift, Math.min(plan.drift, drift + (rnd() - .5) * plan.size[0] * .11));
       const x = (col.x + drift + (rnd() - .5) * plan.size[0] * .05) * K, cy = y + s * ext[i][0];   // 字形顶端落在 y
       const cnv = renderChar(ch, s * (.95 + .08 * w), rnd, { font: alt[i] ? FONT.XING : FONT.CAO, weight: alt[i] ? .006 : .02, tilt: plan.tilt, spread: plan.spread, wet: w, dry });
-      if (prev && rnd() < .28) {
-        const a = { x: prev.x + (rnd() - .3) * prev.s * .16, y: prev.bot - prev.s * .04 }, b = { x: x + (rnd() - .6) * s * .16, y: y + s * .04 };
-        if (b.y - a.y > 6 * K) seq.push(silkPiece(a, b, (1 + rnd() * 1.2) * (.6 + .7 * prev.w) * s / 180, prev.dry, s, rnd));
+      if (prev && rnd() < .35) {
+        // 先取好随机数再判断连不连：笔尖位置按像素找，放大导出时判断可能不同，不能让它打乱后面每个字的随机数
+        const silkRnd = mulberry(rnd() * 1e9 | 0), silkW = (1 + rnd() * .8) * (.6 + .7 * prev.w) * s / 120;
+        // 端点取两个字的真实笔尖；上下挨得太近或左右错开太远，硬连会成小钩或横线，就不连
+        const ta = inkTip(prev.cnv, true), tb = inkTip(cnv, false);
+        const a = ta && { x: prev.x - prev.cnv.width / 2 + ta.x, y: prev.cy - prev.cnv.width / 2 + ta.y };
+        const b = tb && { x: x - cnv.width / 2 + tb.x, y: cy - cnv.width / 2 + tb.y };
+        if (a && b && b.y - a.y > s * .06 && Math.abs(b.x - a.x) < Math.max(s * .12, (b.y - a.y) * 1.2))
+          seq.push(silkPiece(a, b, silkW, prev.dry, silkRnd));
       }
       seq.push(charPiece(cnv, x, cy, 300));
-      prev = { x, s, w, dry, bot: y + s * (ext[i][0] + ext[i][1]) }; y += s * span(i);
+      prev = { x, cy, s, w, dry, cnv }; y += s * span(i);
       await step();
     }
   }
