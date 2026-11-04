@@ -7,14 +7,16 @@
 //   --dry-run         只打包，打印要发的请求，不真的部署
 // 可选环境变量：FC_FUNCTION（默认 noji-ai）、FC_REGION（默认 cn-hangzhou）、ALIYUN_PROFILE（CLI 的配置名）、
 //   FC_HEALTH_URL（默认由 src/config.js 的 ONLINE 推出）
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { promisify } from 'node:util';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const FN = process.env.FC_FUNCTION || 'noji-ai';
 const REGION = process.env.FC_REGION || 'cn-hangzhou';
 const PROFILE = process.env.ALIYUN_PROFILE ? ['--profile', process.env.ALIYUN_PROFILE] : [];
 const DRY = process.argv.includes('--dry-run');
+const run = promisify(execFile);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const die = msg => { console.error(`\n部署失败：${msg}`); process.exit(1); };
 
@@ -25,16 +27,19 @@ const HEALTH = process.env.FC_HEALTH_URL || online.replace(/\/api\/suggest$/, '/
 
 // GetFunction 的返回里有环境变量的值（含 DeepSeek Key），所以每次调用都用 --cli-query 只取需要的字段
 const STATUS = '{state: state, update: lastUpdateStatus, reason: lastUpdateStatusReason, env: keys(environmentVariables || `{}`)}';
-function aliyun(args, query) {
-  try {
-    const out = execFileSync('aliyun', ['fc', ...args, '--region', REGION, ...PROFILE, ...(query ? ['--cli-query', query] : [])],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 24 });
-    return DRY ? out : JSON.parse(out || 'null');
-  } catch (e) {
-    if (e.code === 'ENOENT') die('没找到阿里云 CLI。安装方法见 README「部署」一节，装好后运行 aliyun configure --mode OAuth 登录');
-    const msg = `${e.stderr || ''}${e.stdout || ''}`.trim() || e.message;
-    if (/credential|AccessKey|profile|configure/i.test(msg)) die(`阿里云 CLI 还没登录，先运行 aliyun configure --mode OAuth\n${msg}`);
-    die(msg);
+// 网络偶尔会断（connection reset），这类错误重试两次；重复上传同一份代码也没有副作用
+async function aliyun(args, query) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const { stdout } = await run('aliyun', ['fc', ...args, '--region', REGION, ...PROFILE, ...(query ? ['--cli-query', query] : [])], { maxBuffer: 1 << 24 });
+      return DRY ? stdout : JSON.parse(stdout || 'null');
+    } catch (e) {
+      if (e.code === 'ENOENT') die('没找到阿里云 CLI。安装方法见 README「部署」一节，装好后运行 aliyun configure --mode OAuth 登录');
+      const msg = `${e.stderr || ''}${e.stdout || ''}`.trim() || e.message;
+      if (/connection reset|timeout|EOF|could not be reached/i.test(msg) && attempt < 3) { await sleep(2000); continue; }
+      if (/credential|AccessKey|profile|configure/i.test(msg)) die(`阿里云 CLI 还没登录，先运行 aliyun configure --mode OAuth\n${msg}`);
+      die(msg);
+    }
   }
 }
 const getStatus = () => aliyun(['GetFunction', '--functionName', FN], STATUS);
@@ -49,28 +54,29 @@ console.log(`打包好了：版本 ${version}，${Math.round(zip.length * .75 / 
 
 const body = JSON.stringify({ code: { zipFile: zip } });
 if (DRY) {
-  console.log(aliyun(['UpdateFunction', '--functionName', FN, '--body', body, '--cli-dry-run']).replace(/[A-Za-z0-9+/=]{200,}/g, '<代码包 base64>'));
+  console.log((await aliyun(['UpdateFunction', '--functionName', FN, '--body', body, '--cli-dry-run'])).replace(/[A-Za-z0-9+/=]{200,}/g, '<代码包 base64>'));
   process.exit(0);
 }
 
 // 2. 上传前记下环境变量有哪些（只看名字）
-const before = getStatus();
+const before = await getStatus();
 if (!before) die(`没找到函数 ${FN}（地域 ${REGION}）`);
-console.log(`函数 ${FN}：${before.state}，环境变量 ${before.env.join('、') || '（无）'}`);
+console.log(`函数 ${FN}：环境变量 ${before.env.join('、') || '（无）'}`);
 
 // 3. 只更新 code 字段，其他配置保持原样
-aliyun(['UpdateFunction', '--functionName', FN, '--body', body], 'lastUpdateStatus');
+await aliyun(['UpdateFunction', '--functionName', FN, '--body', body], 'lastUpdateStatus');
 process.stdout.write('已上传，等待部署');
 let now = before;
 for (let t = 0; t < 40; t++) {
   await sleep(3000);
-  now = getStatus();
+  now = await getStatus();
   if (now.update === 'Failed') die(`函数计算报告更新失败：${now.reason || '没有给出原因'}`);
-  if (now.update === 'Successful' && now.state === 'Active') break;
+  // Web 函数的 state、lastUpdateStatus 可能是空的，那就不等它，直接看线上版本号
+  if (now.update !== 'InProgress' && (!now.state || now.state === 'Active')) break;
   process.stdout.write('.');
 }
-console.log(` ${now.update}`);
-if (now.update !== 'Successful') die('两分钟内没部署完，去控制台看看函数状态');
+console.log(` ${now.update || '（平台没有返回部署状态）'}`);
+if (now.update === 'InProgress') die('两分钟内没部署完，去控制台看看函数状态');
 const lost = before.env.filter(k => !now.env.includes(k));
 if (lost.length) die(`环境变量少了 ${lost.join('、')}，去控制台「配置 → 环境变量」补上`);
 
