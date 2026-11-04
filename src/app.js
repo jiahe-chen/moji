@@ -36,7 +36,7 @@ $('form').addEventListener('input', e => {
   const t = e.target;
   const key = Object.keys(fields).find(k => fields[k] === t.id);
   if (key) state[key] = t.value;
-  if (t.name === 'fmt') { state.format = t.value; pinned.format = t.value !== 'auto'; }
+  if (t.name === 'fmt') state.format = t.value;
   if (t.id === 'f-wild') { state.wild = +t.value / 100; $('o-wild').value = t.value; pinned.wild = true; }
   syncUrl();
   clearTimeout(debounce);
@@ -143,12 +143,11 @@ $('b-pdf').addEventListener('click', () => exportArt('pdf'));
 const FIELD_KEYS = ['text', 'src', 'to', 'from', 'date', 'lead', 'format', 'wild'];
 const pick = o => Object.fromEntries(FIELD_KEYS.filter(k => o[k] !== undefined).map(k => [k, o[k]]));
 let shown = [];   // 当前列出的候选句
-// 用户明确定过的版式、放纵度，之后换句子时保持不变；没定过的才跟着候选句走
-const pinned = { format: state.format !== 'auto', wild: false };
+// 版式只在用户明说时才改，换句子不动它。放纵度用户定过就保持不变，没定过才跟着候选句走
+const pinned = { wild: false };
 
 function useSuggestion(s) {
   state.text = s.text; state.src = s.src || ''; state.lead = s.lead || '';
-  if (!pinned.format && s.format) state.format = s.format;
   if (!pinned.wild && s.wild !== undefined) state.wild = s.wild;
 }
 
@@ -164,7 +163,6 @@ async function askAI() {
     const set = pick(data.set || {}), list = data.suggestions || [];
     const before = state.text;
     Object.assign(state, set);
-    if ('format' in set) pinned.format = set.format !== 'auto';
     if ('wild' in set) pinned.wild = true;
     if (list.length) { useSuggestion(list[0]); showSuggestions(list, 0); }
     if (!list.length && !Object.keys(set).length) { msg(data.reply || '没听懂要改什么，换个说法试试', 'ai-msg'); return; }
