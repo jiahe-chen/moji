@@ -8,6 +8,10 @@
 //   ALLOWED_ORIGINS    允许调用的网页来源，逗号分隔，默认 https://jiahe-chen.github.io,http://localhost:8080
 //   PER_IP_PER_HOUR    每个 IP 每小时最多几次，默认 10
 //   DAILY_LIMIT        全站每天最多几次，默认 300（防止费用失控；DeepSeek 后台也建议设消费上限）
+//
+// 接口：POST /api/suggest（AI 选句）、POST /api/hit（匿名计数）、GET /api/health。
+// 每次 AI 调用和计数各打一行 JSON 日志（t 字段区分），函数开了日志服务就能用 tools/stats.mjs 出报表。
+// 日志里不记 IP、不记用户写的内容。
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { suggest } from './agent.mjs';
@@ -35,6 +39,21 @@ function allow(ip) {
   return null;
 }
 
+// 匿名计数：网页打开、下载、分享、从灵感集市做同款。只收认识的事件和几个是/否标记
+const EVENTS = ['open', 'png', 'pdf', 'share'];
+const KINDS = ['home', 'link', 'market'];
+const hitTimes = new Map();
+function countHit(ip, raw) {
+  const now = Date.now(), list = (hitTimes.get(ip) || []).filter(t => now - t < 3600e3);
+  if (list.length >= 200) return;   // 刷计数的直接丢掉
+  list.push(now); hitTimes.set(ip, list);
+  if (hitTimes.size > 5000) hitTimes.clear();
+  let b; try { b = JSON.parse(raw); } catch { return; }
+  if (!EVENTS.includes(b.e)) return;
+  const ref = typeof b.ref === 'string' && /^[a-z0-9.-]{1,60}$/.test(b.ref) ? b.ref : '';
+  console.log(JSON.stringify({ t: 'hit', e: b.e, k: KINDS.includes(b.k) ? b.k : 'home', wx: !!b.wx, m: !!b.m, n: !!b.n, ref }));
+}
+
 function send(res, status, body, origin) {
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -53,10 +72,17 @@ http.createServer(async (req, res) => {
     return res.end();
   }
   if (req.method === 'GET' && req.url === '/api/health') return send(res, 200, { ok: true, version: VERSION, today: dayCount, limit: DAILY }, origin);
-  if (req.method !== 'POST' || req.url !== '/api/suggest') return send(res, 404, { error: '没有这个接口' }, origin);
+  if (req.method !== 'POST' || !['/api/suggest', '/api/hit'].includes(req.url)) return send(res, 404, { error: '没有这个接口' }, origin);
   if (!origin) return send(res, 403, { error: '不允许的来源' }, null);
 
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+  if (req.url === '/api/hit') {   // 网页用 sendBeacon 发，不等回应
+    let raw = '';
+    for await (const chunk of req) { raw += chunk; if (raw.length > 500) break; }
+    if (raw.length <= 500) countHit(ip, raw);
+    res.writeHead(204, { 'access-control-allow-origin': origin, vary: 'origin' });
+    return res.end();
+  }
   let raw = '';
   for await (const chunk of req) { raw += chunk; if (raw.length > 4000) return send(res, 413, { error: '内容太长' }, origin); }
   let request, current;
@@ -64,15 +90,17 @@ http.createServer(async (req, res) => {
   if (!request) return send(res, 400, { error: '先说一句想写什么、送给谁' }, origin);
   if ([...request].length > 200) return send(res, 400, { error: '描述请控制在 200 字以内' }, origin);
   const blocked = allow(ip);
-  if (blocked) return send(res, 429, { error: blocked }, origin);
+  if (blocked) { console.log(JSON.stringify({ t: 'ai', status: 429 })); return send(res, 429, { error: blocked }, origin); }
 
   const t0 = Date.now();
   try {
     const out = await suggest({ apiKey: KEY, request, current });
-    console.log(JSON.stringify({ at: new Date().toISOString(), ms: Date.now() - t0, searches: out.searches.length, usage: out.usage }));
+    // 只记改了哪些字段、给了几条候选，不记用户说的话和写的内容
+    console.log(JSON.stringify({ t: 'ai', status: 200, ms: Date.now() - t0, searches: out.searches.length, suggestions: out.suggestions.length, set: Object.keys(out.set), usage: out.usage }));
     send(res, 200, { reply: out.reply, set: out.set, suggestions: out.suggestions, searches: out.searches }, origin);
   } catch (e) {
     console.error(e);
+    console.log(JSON.stringify({ t: 'ai', status: 502, ms: Date.now() - t0 }));
     send(res, 502, { error: 'AI 暂时没有回应，稍后再试' }, origin);
   }
 }).listen(PORT, '0.0.0.0', () => console.log(`moji AI 代理已启动：http://localhost:${PORT}/api/suggest`));   // 云函数要求监听 0.0.0.0

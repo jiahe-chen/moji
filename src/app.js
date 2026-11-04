@@ -17,8 +17,26 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 const DEFAULTS = { text: '厚德载物', src: '周易句', to: '', from: '墨迹', date: ganzhiSeason(), lead: '', format: 'auto', wild: .5 };
 // 打开分享链接时，链接里没写的项就是留空，不能拿首次访问的示例去补
 const BLANK = { text: '', src: '', to: '', from: '', date: '', lead: '', format: 'auto', wild: .5 };
-const state = fromQuery(location.search, new URLSearchParams(location.search).has('t') ? BLANK : DEFAULTS);
+const opened = new URLSearchParams(location.search);
+const state = fromQuery(location.search, opened.has('t') ? BLANK : DEFAULTS);
 if (!state.seed) state.seed = newSeed();
+
+// ---- 匿名统计：只记发生了什么（打开、下载、分享），不用 cookie、不记内容 ----
+// 打开时带上：从哪类入口进来、是不是微信、是不是手机、这个浏览器今天是不是第一次来（用来估算每天的访客数）
+const HIT = AI_ENDPOINT.replace(/\/api\/suggest$/, '/api/hit');
+const entry = opened.get('via') === 'market' ? 'market' : opened.has('t') ? 'link' : 'home';
+function hit(e, extra = {}) {
+  if (!HIT || !navigator.sendBeacon) return;
+  try { navigator.sendBeacon(HIT, JSON.stringify({ e, k: entry, wx: inWeChat, m: matchMedia('(pointer: coarse)').matches, ...extra })); } catch {}
+}
+function firstToday() {
+  try {
+    const d = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem('moji-day') === d) return false;
+    localStorage.setItem('moji-day', d); return true;
+  } catch { return false; }
+}
+const refHost = (() => { try { const h = new URL(document.referrer).hostname; return h !== location.hostname ? h : ''; } catch { return ''; } })();
 
 // ---- 表单 ----
 const fields = { text: 'f-text', src: 'f-src', to: 'f-to', from: 'f-from', date: 'f-date', lead: 'f-lead' };
@@ -88,6 +106,7 @@ $('b-again').addEventListener('click', () => { state.seed = newSeed(); syncUrl()
 // ---- 分享 ----
 const msg = (text, el = 'msg') => { $(el).textContent = text; };
 $('b-share').addEventListener('click', async () => {
+  hit('share');
   try { await navigator.clipboard.writeText(location.href); msg('链接已复制，发给对方，打开就是这一幅'); }
   catch { sheet(`复制下面的链接：\n${location.href}`); }
 });
@@ -115,6 +134,7 @@ async function exportArt(kind) {
     const big = mk(Math.round(plan.w * K), Math.round(plan.h * K)), bg = big.getContext('2d', { willReadFrequently: true });
     const scene = await createScene(bg, plan, { K, seed: state.seed, mk, tick, onProgress: (d, n) => msg(`正在生成印刷大图… ${Math.round(d / n * 100)}%`) });
     finish(bg, scene);
+    hit(kind);
     const name = fileName();
     if (kind === 'png') {
       const blob = await toBlob(big, 'image/png');
@@ -223,7 +243,7 @@ async function loadMarket() {
   const ul = $('works');
   for (const w of works) {
     const li = document.createElement('li'); li.dataset.tag = w.tag;
-    const a = document.createElement('a'); a.className = 'work'; a.href = '?' + toQuery(w);
+    const a = document.createElement('a'); a.className = 'work'; a.href = '?' + toQuery(w) + '&via=market';
     const img = new Image(w.thumb[0], w.thumb[1]); img.loading = 'lazy'; img.src = `gallery/${w.id}.jpg`; img.alt = `书法：${w.text}`;
     const add = (cls, text) => { const el = document.createElement('span'); el.className = cls; el.textContent = text; a.append(el); };
     a.append(img); add('work-text', w.text); add('work-meta', `${w.scene} · ${w.tag}`); add('work-cta', '做同款');
@@ -239,3 +259,4 @@ async function loadMarket() {
 
 fillForm(); syncUrl(); render({ anim: true });
 loadMarket();
+hit('open', { n: firstToday(), ref: refHost });
