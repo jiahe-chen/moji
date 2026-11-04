@@ -1,6 +1,7 @@
 // 模拟 DeepSeek 的 Messages 和 Search 接口，用来在没有 Key 的情况下测试 server/ 和网页的完整流程。
 // - 新需求：第一轮返回 web_search 工具调用，第二轮返回选句，并从“送给 X”“我是 Y”里识别人名
 // - “署名改成 X”“换成竖的/横的”“再狂一点”：不搜索，直接返回要改的字段
+// - 带“忽略”“系统提示”“骂”的：模拟护栏，婉拒
 import http from 'node:http';
 
 function edits(said) {
@@ -25,6 +26,9 @@ http.createServer(async (req, res) => {
     if (!req.headers['x-api-key'] || data.model !== 'deepseek-flash') { res.statusCode = 400; return res.end('{}'); }
     const first = data.messages[0].content, said = first.split('用户说：')[1] || '';
     const usage = { input_tokens: 600, output_tokens: 80 };
+    if (/忽略|系统提示|骂/.test(said)) {   // 模拟护栏：婉拒，什么都不改
+      return res.end(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ reply: '这个不写哦，换个吉祥、励志的内容吧', set: {}, suggestions: [] }) }], stop_reason: 'end_turn', usage }));
+    }
     const set = edits(said);
     if (Object.keys(set).length) {
       return res.end(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ reply: '已按你说的改好', set, suggestions: [] }) }], stop_reason: 'end_turn', usage }));
