@@ -32,9 +32,10 @@ function syncUrl() {
   $('seed').textContent = `种子 ${state.seed}`;
 }
 let debounce = 0;
-$('form').addEventListener('input', e => {
+$('panel').addEventListener('input', e => {
   const t = e.target;
   const key = Object.keys(fields).find(k => fields[k] === t.id);
+  if (!key && t.name !== 'fmt' && t.id !== 'f-wild') return;   // AI 输入框之类不是作品字段
   if (key) state[key] = t.value;
   if (t.name === 'fmt') state.format = t.value;
   if (t.id === 'f-wild') { state.wild = +t.value / 100; $('o-wild').value = t.value; pinned.wild = true; }
@@ -42,7 +43,6 @@ $('form').addEventListener('input', e => {
   clearTimeout(debounce);
   debounce = setTimeout(() => render(), 500);
 });
-$('form').addEventListener('submit', e => e.preventDefault());
 
 // ---- 字体 ----
 // 书法字体按 unicode-range 分片托管，load() 只下载用到的那几片；篆字字体不能切分，约 21MB，后台慢慢加载
@@ -88,7 +88,7 @@ $('b-again').addEventListener('click', () => { state.seed = newSeed(); syncUrl()
 // ---- 分享 ----
 const msg = (text, el = 'msg') => { $(el).textContent = text; };
 $('b-share').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(location.href); msg('链接已复制，打开就是这一幅'); }
+  try { await navigator.clipboard.writeText(location.href); msg('链接已复制，发给对方，打开就是这一幅'); }
   catch { sheet(`复制下面的链接：\n${location.href}`); }
 });
 
@@ -209,6 +209,7 @@ if (AI_ENDPOINT) {
   $('ai-q').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); askAI(); } });
 } else {
   $('b-again').classList.add('primary');
+  $('more').open = true;   // 没有 AI 时只能手动填正文
 }
 
 fillForm(); syncUrl(); render({ anim: true });

@@ -1,4 +1,5 @@
-/* 布局：桌面左侧是装裱好的作品预览，右侧是填写面板；手机上作品在上、面板在下。
+/* 布局：桌面左侧是装裱好的作品预览，右侧是面板；手机上作品在上、面板在下。
+   面板从上到下：常用的落款和分享下载、AI、折叠起来的细调。
    单一深色观感：砚台黑底衬宣纸，朱砂红只用在主按钮和印章上。 */
 :root {
   --inkstone: #1b1c1d;
@@ -44,7 +45,8 @@ body {
 h2 { font-size: 14px; font-weight: 600; letter-spacing: .15em; color: var(--silk-edge); margin: 0 0 8px; }
 label, legend { display: block; font-size: 13px; color: var(--muted); margin: 0 0 4px; letter-spacing: .05em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-#form { display: grid; gap: 12px; }
+.quick { display: grid; gap: 10px; }
+#msg:empty { display: none; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .row2 > div { min-width: 0; }
 input, textarea {
@@ -65,8 +67,8 @@ output { color: var(--text); font-variant-numeric: tabular-nums; }
 .fmt input:checked + span { border-color: var(--silk-edge); background: rgba(183, 167, 127, .14); }
 .fmt input:focus-visible + span { outline: 2px solid var(--silk-edge); outline-offset: 2px; }
 
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.btn { font: inherit; font-size: 14px; letter-spacing: .08em; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 9px 12px; cursor: pointer; }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.btn { font: inherit; font-size: 14px; letter-spacing: .08em; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 9px 10px; cursor: pointer; white-space: nowrap; }
 .btn:hover { border-color: var(--silk-edge); }
 .btn:focus-visible { outline: 2px solid var(--silk-edge); outline-offset: 2px; }
 .btn:disabled { opacity: .5; cursor: progress; }
@@ -87,6 +89,16 @@ output { color: var(--text); font-variant-numeric: tabular-nums; }
 .ai-use { justify-self: start; padding: 4px 14px; font-size: 13px; }
 .ai-list li.on .ai-use { border-color: var(--silk-edge); color: var(--silk-edge); cursor: default; }
 .ai-reply { color: var(--text); }
+
+.more { border: 1px solid var(--line); border-radius: 4px; }
+.more summary { cursor: pointer; list-style: none; padding: 11px 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 14px; font-weight: 600; letter-spacing: .15em; color: var(--silk-edge); }
+.more summary::-webkit-details-marker { display: none; }
+.more summary::before { content: "▸"; display: inline-block; transition: transform .15s; }
+.more[open] summary::before { transform: rotate(90deg); }
+.more summary span { font-size: 12px; font-weight: 400; letter-spacing: .05em; color: var(--muted); }
+.more summary:focus-visible { outline: 2px solid var(--silk-edge); outline-offset: 2px; }
+.more-body { padding: 2px 14px 14px; display: grid; gap: 12px; }
+.more-foot { display: flex; align-items: center; gap: 12px; }
 
 .sheet { position: fixed; inset: 0; background: rgba(0, 0, 0, .78); display: grid; place-items: center; z-index: 10; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .sheet-body { background: var(--panel); border-radius: 6px; padding: 18px; max-width: min(560px, 100%); max-height: 100%; overflow: auto; display: grid; gap: 12px; }

@@ -22,7 +22,20 @@
     <figcaption class="status" id="status" hidden></figcaption>
   </figure>
 
-  <aside class="panel">
+  <aside class="panel" id="panel">
+    <section class="quick" aria-label="落款与分享">
+      <div class="row2">
+        <div><label for="f-to">赠给</label><input id="f-to" placeholder="受赠人"></div>
+        <div><label for="f-from">署名</label><input id="f-from" placeholder="你的名字，刻成印章"></div>
+      </div>
+      <div class="actions">
+        <button id="b-share" type="button" class="btn">分享链接</button>
+        <button id="b-png" type="button" class="btn">下载图片</button>
+        <button id="b-pdf" type="button" class="btn">下载 PDF</button>
+      </div>
+      <p class="hint" id="msg" aria-live="polite"></p>
+    </section>
+
     <section class="ai" id="ai" hidden>
       <h2>说一句，AI 来写</h2>
       <label class="sr" for="ai-q">想写什么、送给谁、你是谁</label>
@@ -32,40 +45,32 @@
       <ol class="ai-list" id="ai-list"></ol>
     </section>
 
-    <form id="form" autocomplete="off">
-      <label for="f-text">正文</label>
-      <textarea id="f-text" rows="3" placeholder="要写的字。手动换行可以指定分行，否则自动排"></textarea>
-
-      <div class="row2">
-        <div><label for="f-to">赠给</label><input id="f-to" placeholder="受赠人"></div>
-        <div><label for="f-from">署名</label><input id="f-from" placeholder="你的名字，也刻在印章上"></div>
+    <details class="more" id="more">
+      <summary>更多调整<span>正文、出处、日期、引首章、版式、放纵</span></summary>
+      <div class="more-body">
+        <div><label for="f-text">正文</label>
+        <textarea id="f-text" rows="3" placeholder="要写的字。手动换行可以指定分行，否则自动排"></textarea></div>
+        <div class="row2">
+          <div><label for="f-src">出处</label><input id="f-src" placeholder="如：李白行路难句"></div>
+          <div><label for="f-date">日期</label><input id="f-date" placeholder="如：丙午秋"></div>
+        </div>
+        <div class="row2">
+          <div><label for="f-lead">引首章</label><input id="f-lead" maxlength="2" placeholder="两个字，可空"></div>
+          <div><label for="f-wild">放纵 <output id="o-wild"></output></label><input id="f-wild" type="range" min="0" max="100" step="5"></div>
+        </div>
+        <fieldset class="fmt">
+          <legend>版式</legend>
+          <label><input type="radio" name="fmt" value="auto"><span>自动<small id="fmt-auto"></small></span></label>
+          <label><input type="radio" name="fmt" value="tiaofu"><span>条幅</span></label>
+          <label><input type="radio" name="fmt" value="doufang"><span>斗方</span></label>
+          <label><input type="radio" name="fmt" value="hengpi"><span>横披</span></label>
+        </fieldset>
+        <div class="more-foot">
+          <button id="b-again" type="button" class="btn">重写一幅</button>
+          <span class="hint seed" id="seed"></span>
+        </div>
       </div>
-      <div class="row2">
-        <div><label for="f-src">出处</label><input id="f-src" placeholder="如：李白行路难句"></div>
-        <div><label for="f-date">日期</label><input id="f-date" placeholder="如：丙午秋"></div>
-      </div>
-      <div class="row2">
-        <div><label for="f-lead">引首章</label><input id="f-lead" maxlength="2" placeholder="两个字，可空"></div>
-        <div><label for="f-wild">放纵 <output id="o-wild"></output></label><input id="f-wild" type="range" min="0" max="100" step="5"></div>
-      </div>
-
-      <fieldset class="fmt">
-        <legend>版式</legend>
-        <label><input type="radio" name="fmt" value="auto"><span>自动<small id="fmt-auto"></small></span></label>
-        <label><input type="radio" name="fmt" value="tiaofu"><span>条幅</span></label>
-        <label><input type="radio" name="fmt" value="doufang"><span>斗方</span></label>
-        <label><input type="radio" name="fmt" value="hengpi"><span>横披</span></label>
-      </fieldset>
-    </form>
-
-    <div class="actions">
-      <button id="b-again" type="button" class="btn">重写一幅</button>
-      <button id="b-share" type="button" class="btn">复制分享链接</button>
-      <button id="b-png" type="button" class="btn">下载图片</button>
-      <button id="b-pdf" type="button" class="btn">下载 PDF</button>
-    </div>
-    <p class="hint" id="msg" aria-live="polite"></p>
-    <p class="hint seed" id="seed"></p>
+    </details>
   </aside>
 </main>
 
