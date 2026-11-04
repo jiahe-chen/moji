@@ -67,7 +67,7 @@ output { color: var(--text); font-variant-numeric: tabular-nums; }
 .fmt input:checked + span { border-color: var(--silk-edge); background: rgba(183, 167, 127, .14); }
 .fmt input:focus-visible + span { outline: 2px solid var(--silk-edge); outline-offset: 2px; }
 
-.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .btn { font: inherit; font-size: 14px; letter-spacing: .08em; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 9px 10px; cursor: pointer; white-space: nowrap; }
 .btn:hover { border-color: var(--silk-edge); }
 .btn:focus-visible { outline: 2px solid var(--silk-edge); outline-offset: 2px; }
@@ -112,7 +112,7 @@ output { color: var(--text); font-variant-numeric: tabular-nums; }
 .tabs { display: flex; gap: 6px; margin-left: auto; }
 .tabs button[aria-pressed="true"] { color: var(--text); border-color: var(--silk-edge); background: rgba(183, 167, 127, .14); }
 .works { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-.work { display: grid; gap: 4px; color: inherit; text-decoration: none; }
+.work { display: grid; gap: 4px; width: 100%; color: inherit; text-decoration: none; font: inherit; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; }
 .work img { width: 100%; height: 260px; object-fit: contain; background: var(--silk); padding: 8px; border-radius: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); transition: transform .15s; }
 .work:hover img, .work:focus-visible img { transform: translateY(-2px); }
 .work:focus-visible { outline: 2px solid var(--silk-edge); outline-offset: 4px; }

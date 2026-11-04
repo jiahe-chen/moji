@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 访问报表：从阿里云日志服务读 AI 代理的日志，按天统计网页打开、访客、下载、分享和 AI 调用。
+// 访问报表：从阿里云日志服务读 AI 代理的日志，按天统计网页打开、访客、下载、做同款和 AI 调用。
 // 日志是 server/server.mjs 打的 JSON 行（t 字段区分：hit 是网页计数，ai 是 AI 调用），里面没有 IP 和用户写的内容。
 //
 // 前提：函数开了日志（控制台「配置 → 日志」），阿里云 CLI 已登录。
@@ -40,13 +40,13 @@ for (let offset = 0; ; offset += 100) {
 }
 
 const day = ts => new Date((+ts + 8 * 3600) * 1000).toISOString().slice(5, 10);   // 北京时间
-const days = new Map(), get = d => days.get(d) || days.set(d, { open: 0, visitors: 0, link: 0, market: 0, wx: 0, mobile: 0, png: 0, pdf: 0, share: 0, ai: 0, aiLimited: 0, aiFailed: 0, refs: {} }).get(d);
+const days = new Map(), get = d => days.get(d) || days.set(d, { open: 0, visitors: 0, wx: 0, mobile: 0, png: 0, pdf: 0, remix: 0, ai: 0, aiLimited: 0, aiFailed: 0, refs: {} }).get(d);
 for (const row of lines) {
   let r; try { r = JSON.parse(row.message ?? row.content ?? ''); } catch { continue; }
   const s = get(day(row.__time__));
   if (r.t === 'hit') {
     if (r.e === 'open') {
-      s.open++; if (r.n) s.visitors++; if (r.k === 'link') s.link++; if (r.k === 'market') s.market++;
+      s.open++; if (r.n) s.visitors++;
       if (r.wx) s.wx++; if (r.m) s.mobile++; if (r.ref) s.refs[r.ref] = (s.refs[r.ref] || 0) + 1;
     } else if (r.e in s) s[r.e]++;
   } else if (r.t === 'ai') {
@@ -55,7 +55,7 @@ for (const row of lines) {
 }
 
 if (!days.size) { console.log(`最近 ${DAYS} 天没有访问记录`); process.exit(0); }
-const cols = [['open', '打开'], ['visitors', '访客'], ['link', '分享链接'], ['market', '集市'], ['wx', '微信'], ['mobile', '手机'], ['png', '下图片'], ['pdf', '下PDF'], ['share', '分享'], ['ai', 'AI'], ['aiLimited', '限频'], ['aiFailed', 'AI失败']];
+const cols = [['open', '打开'], ['visitors', '访客'], ['wx', '微信'], ['mobile', '手机'], ['png', '下图片'], ['pdf', '下PDF'], ['remix', '做同款'], ['ai', 'AI'], ['aiLimited', '限频'], ['aiFailed', 'AI失败']];
 const total = Object.fromEntries(cols.map(([k]) => [k, 0]));
 console.log(`最近 ${DAYS} 天（北京时间）。访客按“这个浏览器当天第一次来”估算，不是精确人数\n`);
 console.log(['日期 ', ...cols.map(c => c[1])].join('\t'));

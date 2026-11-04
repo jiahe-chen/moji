@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 只许加载本站的脚本、样式、字体，网络请求只能发到本站和 AI 代理；换代理地址时这里也要改 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://noji-ai-yvndopgaqo.cn-hangzhou.fcapp.run http://localhost:8787; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>墨迹 moji · 代码写的书法</title>
-<meta name="description" content="输入诗句，自动写成行草书法：落款、小篆印章、宣纸纹理一应俱全，可分享链接、导出高清图片和 PDF。">
+<meta name="description" content="输入诗句，自动写成行草书法：落款、小篆印章、宣纸纹理一应俱全，可导出高清图片和 PDF。">
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='3' fill='%23b8322a'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='%23f2eee4' font-family='serif'%3E墨%3C/text%3E%3C/svg%3E">
@@ -23,9 +25,8 @@
   </figure>
 
   <aside class="panel" id="panel">
-    <section class="quick" aria-label="分享与下载">
+    <section class="quick" aria-label="下载">
       <div class="actions">
-        <button id="b-share" type="button" class="btn">分享链接</button>
         <button id="b-png" type="button" class="btn">下载图片</button>
         <button id="b-pdf" type="button" class="btn">下载 PDF</button>
       </div>
@@ -83,7 +84,7 @@
 <section class="market" id="market" hidden>
   <div class="market-head">
     <h2>灵感集市</h2>
-    <p class="hint">挑一幅喜欢的，点「做同款」在编辑器里打开，改成你的场景和名字就能送人。</p>
+    <p class="hint">挑一幅喜欢的，点「做同款」在上面打开，改成你的场景和名字就能送人。</p>
     <div class="tabs" id="tabs" role="group" aria-label="按类别看">
       <button type="button" data-tag="" aria-pressed="true">全部</button>
       <button type="button" data-tag="祝福" aria-pressed="false">祝福</button>
@@ -103,7 +104,7 @@
 </div>
 
 <footer class="foot">
-  <p>字形取自开源字体：刘建毛草、智芒行、马善政（SIL OFL）；篆字取自崇羲篆體 © 中央研究院（CC BY-ND 3.0 TW）；简繁对照来自 OpenCC。墨色、飞白、纸纹、印章全部由代码生成，同一个链接永远是同一幅字。网站只匿名统计打开、下载、分享的次数，不用 cookie，不记录你写的内容。</p>
+  <p>字形取自开源字体：刘建毛草、智芒行、马善政（SIL OFL）；篆字取自崇羲篆體 © 中央研究院（CC BY-ND 3.0 TW）；简繁对照来自 OpenCC。墨色、飞白、纸纹、印章全部由代码生成。网站只匿名统计打开、下载的次数，不用 cookie，不记录你写的内容。</p>
 </footer>
 
 <script type="module" src="src/app.js"></script>

@@ -1,8 +1,8 @@
-// 网页：读写表单和网址参数，调用引擎预览，导出图片和 PDF，接 AI 选句。
+// 网页：读写表单，调用引擎预览，导出图片和 PDF，接 AI 选句。
+// 不从网址读作品参数：别人没法拼一个链接，借这个网站展示任意文字。
 import { createScene, finish, animate, FONT } from './engine.js';
 import { layout, hanOnly, FORMATS } from './layout.js';
 import { ganzhiSeason } from './calendar.js';
-import { toQuery, fromQuery } from './share.js';
 import { jpegToPdf } from './pdf.js';
 import { AI_ENDPOINT } from './config.js';
 
@@ -15,19 +15,18 @@ const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; 
 const tick = () => new Promise(r => setTimeout(r, 0));
 
 const DEFAULTS = { text: '厚德载物', src: '周易句', to: '', from: '墨迹', date: ganzhiSeason(), lead: '', format: 'auto', wild: .5 };
-// 打开分享链接时，链接里没写的项就是留空，不能拿首次访问的示例去补
-const BLANK = { text: '', src: '', to: '', from: '', date: '', lead: '', format: 'auto', wild: .5 };
-const opened = new URLSearchParams(location.search);
-const state = fromQuery(location.search, opened.has('t') ? BLANK : DEFAULTS);
-if (!state.seed) state.seed = newSeed();
+const state = { ...DEFAULTS, seed: newSeed() };
+// 以前的分享链接把作品写在网址里，现在不认了，顺手清掉，免得地址栏里还挂着别人写的字
+if (location.search) history.replaceState(null, '', location.pathname);
+// 字段长度上限，和 AI 代理那边一致；超长的字会让排版和渲染变得很慢
+const MAX = { text: 200, src: 40, to: 20, from: 20, date: 12, lead: 2 };
 
-// ---- 匿名统计：只记发生了什么（打开、下载、分享），不用 cookie、不记内容 ----
-// 打开时带上：从哪类入口进来、是不是微信、是不是手机、这个浏览器今天是不是第一次来（用来估算每天的访客数）
+// ---- 匿名统计：只记发生了什么（打开、下载、做同款），不用 cookie、不记内容 ----
+// 打开时带上：是不是微信、是不是手机、这个浏览器今天是不是第一次来（用来估算每天的访客数）
 const HIT = AI_ENDPOINT.replace(/\/api\/suggest$/, '/api/hit');
-const entry = opened.get('via') === 'market' ? 'market' : opened.has('t') ? 'link' : 'home';
 function hit(e, extra = {}) {
   if (!HIT || !navigator.sendBeacon) return;
-  try { navigator.sendBeacon(HIT, JSON.stringify({ e, k: entry, wx: inWeChat, m: matchMedia('(pointer: coarse)').matches, ...extra })); } catch {}
+  try { navigator.sendBeacon(HIT, JSON.stringify({ e, wx: inWeChat, m: matchMedia('(pointer: coarse)').matches, ...extra })); } catch {}
 }
 function firstToday() {
   try {
@@ -41,14 +40,11 @@ const refHost = (() => { try { const h = new URL(document.referrer).hostname; re
 // ---- 表单 ----
 const fields = { text: 'f-text', src: 'f-src', to: 'f-to', from: 'f-from', date: 'f-date', lead: 'f-lead' };
 function fillForm() {
-  for (const [k, id] of Object.entries(fields)) $(id).value = state[k] || '';
+  for (const [k, id] of Object.entries(fields)) { $(id).maxLength = MAX[k]; $(id).value = [...(state[k] || '')].slice(0, MAX[k]).join(''); state[k] = $(id).value; }
   $('f-wild').value = Math.round(state.wild * 100); $('o-wild').value = Math.round(state.wild * 100);
   for (const r of document.querySelectorAll('input[name="fmt"]')) r.checked = r.value === state.format;
 }
-function syncUrl() {
-  history.replaceState(null, '', '?' + toQuery(state));
-  $('seed').textContent = `种子 ${state.seed}`;
-}
+function showSeed() { $('seed').textContent = `种子 ${state.seed}`; }
 let debounce = 0;
 $('panel').addEventListener('input', e => {
   const t = e.target;
@@ -57,7 +53,6 @@ $('panel').addEventListener('input', e => {
   if (key) state[key] = t.value;
   if (t.name === 'fmt') state.format = t.value;
   if (t.id === 'f-wild') { state.wild = +t.value / 100; $('o-wild').value = t.value; pinned.wild = true; }
-  syncUrl();
   clearTimeout(debounce);
   debounce = setTimeout(() => render(), 500);
 });
@@ -101,15 +96,9 @@ async function render({ anim = false } = {}) {
   });
 }
 
-$('b-again').addEventListener('click', () => { state.seed = newSeed(); syncUrl(); render({ anim: true }); });
+$('b-again').addEventListener('click', () => { state.seed = newSeed(); showSeed(); render({ anim: true }); });
 
-// ---- 分享 ----
 const msg = (text, el = 'msg') => { $(el).textContent = text; };
-$('b-share').addEventListener('click', async () => {
-  hit('share');
-  try { await navigator.clipboard.writeText(location.href); msg('链接已复制，发给对方，打开就是这一幅'); }
-  catch { sheet(`复制下面的链接：\n${location.href}`); }
-});
 
 // ---- 导出 ----
 function fileName() {
@@ -189,7 +178,7 @@ async function askAI() {
     // 换了正文就换个种子重新写；只改落款、版式这类，保留种子，正文的字形不变
     const fresh = state.text !== before;
     if (fresh) state.seed = newSeed();
-    fillForm(); syncUrl(); render({ anim: fresh });
+    fillForm(); showSeed(); render({ anim: fresh });
     msg(data.reply || '写好了', 'ai-msg');
     $('ai-q').value = '';
     $('ai-q').placeholder = '接着说：署名改成王五、换成竖的、再狂一点、换一句';
@@ -215,7 +204,7 @@ function showSuggestions(list, active) {
     b.addEventListener('click', () => {
       if (li.classList.contains('on')) return;
       useSuggestion(s); state.seed = newSeed();
-      fillForm(); syncUrl(); render({ anim: true }); showSuggestions(shown, idx);
+      fillForm(); showSeed(); render({ anim: true }); showSuggestions(shown, idx);
       $('mount').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
     });
     ol.append(li);
@@ -243,7 +232,12 @@ async function loadMarket() {
   const ul = $('works');
   for (const w of works) {
     const li = document.createElement('li'); li.dataset.tag = w.tag;
-    const a = document.createElement('a'); a.className = 'work'; a.href = '?' + toQuery(w) + '&via=market';
+    const a = document.createElement('button'); a.type = 'button'; a.className = 'work';
+    a.addEventListener('click', () => {   // 在当前页面换成这一幅：同样的参数和种子，写出来和缩略图一样
+      for (const k of [...Object.keys(DEFAULTS), 'seed']) state[k] = w[k];
+      fillForm(); showSeed(); render({ anim: true }); hit('remix');
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
     const img = new Image(w.thumb[0], w.thumb[1]); img.loading = 'lazy'; img.src = `gallery/${w.id}.jpg`; img.alt = `书法：${w.text}`;
     const add = (cls, text) => { const el = document.createElement('span'); el.className = cls; el.textContent = text; a.append(el); };
     a.append(img); add('work-text', w.text); add('work-meta', `${w.scene} · ${w.tag}`); add('work-cta', '做同款');
@@ -257,6 +251,6 @@ async function loadMarket() {
   });
 }
 
-fillForm(); syncUrl(); render({ anim: true });
+fillForm(); showSeed(); render({ anim: true });
 loadMarket();
 hit('open', { n: firstToday(), ref: refHost });

@@ -8,6 +8,7 @@
 //   ALLOWED_ORIGINS    允许调用的网页来源，逗号分隔，默认 https://jiahe-chen.github.io,http://localhost:8080
 //   PER_IP_PER_HOUR    每个 IP 每小时最多几次，默认 10
 //   DAILY_LIMIT        全站每天最多几次，默认 300（防止费用失控；DeepSeek 后台也建议设消费上限）
+//   HIT_DAILY_LIMIT    每天最多记多少条匿名计数，默认 20000
 //
 // 接口：POST /api/suggest（AI 选句）、POST /api/hit（匿名计数）、GET /api/health。
 // 每次 AI 调用和计数各打一行 JSON 日志（t 字段区分），函数开了日志服务就能用 tools/stats.mjs 出报表。
@@ -39,19 +40,23 @@ function allow(ip) {
   return null;
 }
 
-// 匿名计数：网页打开、下载、分享、从灵感集市做同款。只收认识的事件和几个是/否标记
-const EVENTS = ['open', 'png', 'pdf', 'share'];
-const KINDS = ['home', 'link', 'market'];
+// 匿名计数：网页打开、下载、从灵感集市做同款。只收认识的事件和几个是/否标记
+const EVENTS = ['open', 'png', 'pdf', 'remix'];
+const HIT_DAILY = +(process.env.HIT_DAILY_LIMIT || 20000);   // 每个实例每天最多记这么多条，防止被刷出日志费用
 const hitTimes = new Map();
+let hitDay = '', hitCount = 0;
 function countHit(ip, raw) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== hitDay) { hitDay = today; hitCount = 0; hitTimes.clear(); }
+  if (hitCount >= HIT_DAILY) return;
   const now = Date.now(), list = (hitTimes.get(ip) || []).filter(t => now - t < 3600e3);
   if (list.length >= 200) return;   // 刷计数的直接丢掉
-  list.push(now); hitTimes.set(ip, list);
+  list.push(now); hitTimes.set(ip, list); hitCount++;
   if (hitTimes.size > 5000) hitTimes.clear();
   let b; try { b = JSON.parse(raw); } catch { return; }
   if (!EVENTS.includes(b.e)) return;
   const ref = typeof b.ref === 'string' && /^[a-z0-9.-]{1,60}$/.test(b.ref) ? b.ref : '';
-  console.log(JSON.stringify({ t: 'hit', e: b.e, k: KINDS.includes(b.k) ? b.k : 'home', wx: !!b.wx, m: !!b.m, n: !!b.n, ref }));
+  console.log(JSON.stringify({ t: 'hit', e: b.e, wx: !!b.wx, m: !!b.m, n: !!b.n, ref }));
 }
 
 function send(res, status, body, origin) {
@@ -75,7 +80,8 @@ http.createServer(async (req, res) => {
   if (req.method !== 'POST' || !['/api/suggest', '/api/hit'].includes(req.url)) return send(res, 404, { error: '没有这个接口' }, origin);
   if (!origin) return send(res, 403, { error: '不允许的来源' }, null);
 
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+  // X-Forwarded-For 前面几段是客户端自己能填的，最后一段才是阿里云网关看到的真实来源，限流只认它
+  const ip = (req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress;
   if (req.url === '/api/hit') {   // 网页用 sendBeacon 发，不等回应
     let raw = '';
     for await (const chunk of req) { raw += chunk; if (raw.length > 500) break; }
