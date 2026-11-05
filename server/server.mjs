@@ -5,7 +5,8 @@
 // 环境变量：
 //   DEEPSEEK_API_KEY   必填，站长的 DeepSeek Key，只放在服务器上
 //   PORT               监听端口，默认 8787（阿里云 Web 函数用 9000）
-//   ALLOWED_ORIGINS    允许调用的网页来源，逗号分隔，默认 https://jiahe-chen.github.io,http://localhost:8080
+//   ALLOWED_ORIGINS    额外允许调用的网页来源，逗号分隔，默认 http://localhost:8080；
+//                      正式站点的来源写在下面的 SITE_ORIGINS 里，换域名改代码、npm run deploy 就行，不用动环境变量
 //   PER_IP_PER_HOUR    每个 IP 每小时最多几次，默认 10
 //   DAILY_LIMIT        全站每天最多几次，默认 300（防止费用失控；DeepSeek 后台也建议设消费上限）
 //   HIT_DAILY_LIMIT    每天最多记多少条匿名计数，默认 20000
@@ -23,7 +24,8 @@ const VERSION = (() => { try { return readFileSync(new URL('./version.txt', impo
 const KEY = process.env.DEEPSEEK_API_KEY;
 if (!KEY) { console.error('缺少环境变量 DEEPSEEK_API_KEY'); process.exit(1); }
 const PORT = +(process.env.PORT || 8787);
-const ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://jiahe-chen.github.io,http://localhost:8080').split(',').map(s => s.trim());
+const SITE_ORIGINS = ['https://mojishufa.com', 'https://www.mojishufa.com', 'https://jiahe-chen.github.io'];
+const ORIGINS = [...new Set([...SITE_ORIGINS, ...(process.env.ALLOWED_ORIGINS ?? 'http://localhost:8080').split(',').map(s => s.trim()).filter(Boolean)])];
 const PER_IP = +(process.env.PER_IP_PER_HOUR || 10);
 const DAILY = +(process.env.DAILY_LIMIT || 300);
 
