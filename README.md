@@ -2,7 +2,7 @@
 
 输入一句诗，代码替你写成一幅行草书法，落款、小篆印章、宣纸纹理一应俱全。
 
-**在线使用：https://jiahe-chen.github.io/moji/**
+**在线使用：https://mojishufa.com/**
 
 - 浏览器里直接下载 300dpi 高清 PNG 和 PDF，可以拿去打印装裱。
 - 说一句话，AI 来写：比如「送给刚升职的张三，我是李四，挂办公室」。DeepSeek V4.1 会识别出赠给、署名和风格，选好句子、上网核对原文后直接写出来。版式你说了横的、竖的就照办，没说就自动排。AI 只写适合送人的内容，有争议、敏感的内容和让它「忽略规则」之类的话都会婉拒，也不表达立场。之后接着说「署名改成王五」「换成竖的」「再狂一点」「换一句」，AI 直接改。
@@ -67,7 +67,7 @@ DEEPSEEK_API_KEY=sk-... npm run agent      # 本地启动，监听 8787，网页
    - 执行超时时间：改成 `120` 秒，选句时要上网核对，一次大约 20–60 秒。
 3. 在「更多配置 → 环境变量」里填：
    - `DEEPSEEK_API_KEY`：你的 Key
-   - `ALLOWED_ORIGINS`：`https://jiahe-chen.github.io`
+   - 网站自己的域名已经写在 `server/server.mjs` 的 `SITE_ORIGINS` 里。自己部署到别的域名时，改那里，或者用 `ALLOWED_ORIGINS` 追加（逗号分隔）
    - 按需设置 `PER_IP_PER_HOUR`（默认 10）和 `DAILY_LIMIT`（默认 300）
 4. 在函数的「触发器」页签确认有一个 HTTP 触发器，认证方式选「无需认证」，请求方式包含 POST 和 OPTIONS。复制公网访问地址，加上 `/api/suggest`，填进 `src/config.js` 的 `ONLINE`。
 5. 在 DeepSeek 后台给这个 Key 设置消费上限，作为最后一道保险。
