@@ -236,10 +236,10 @@ async function loadMarket() {
     a.addEventListener('click', () => {   // 在当前页面换成这一幅：同样的参数和种子，写出来和缩略图一样
       for (const k of [...Object.keys(DEFAULTS), 'seed']) state[k] = w[k];
       fillForm(); showSeed(); render({ anim: true }); hit('remix');
-      if (AI_ENDPOINT) {   // AI 框换成这一幅的说法：保留正文，只换名字，改完点「写一幅」就是自己的
-        $('ai-q').value = `就写这句，${w.to ? `送给${w.to}` : '自己挂着'}，我是${w.from}`;
+      if (AI_ENDPOINT) {   // AI 框换成这一幅的诗句；AI 认得出明确的句子，会照写不另推荐，用户在后面加上送给谁就行
+        $('ai-q').value = w.text;
         $('ai-list').replaceChildren(); shown = [];
-        msg('改成你们的名字，点「写一幅」', 'ai-msg');
+        msg('在后面加上送给谁、你是谁，点「写一幅」', 'ai-msg');
       }
       window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
     });
