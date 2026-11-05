@@ -236,6 +236,11 @@ async function loadMarket() {
     a.addEventListener('click', () => {   // 在当前页面换成这一幅：同样的参数和种子，写出来和缩略图一样
       for (const k of [...Object.keys(DEFAULTS), 'seed']) state[k] = w[k];
       fillForm(); showSeed(); render({ anim: true }); hit('remix');
+      if (AI_ENDPOINT) {   // AI 框换成这一幅的说法：保留正文，只换名字，改完点「写一幅」就是自己的
+        $('ai-q').value = `就写这句，${w.to ? `送给${w.to}` : '自己挂着'}，我是${w.from}`;
+        $('ai-list').replaceChildren(); shown = [];
+        msg('改成你们的名字，点「写一幅」', 'ai-msg');
+      }
       window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
     });
     const img = new Image(w.thumb[0], w.thumb[1]); img.loading = 'lazy'; img.src = `gallery/${w.id}.jpg`; img.alt = `书法：${w.text}`;
